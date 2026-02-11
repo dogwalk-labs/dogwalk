@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: dogwalk-db
+    environment:
+      POSTGRES_USER: dogwalk
+      POSTGRES_PASSWORD: dogwalk
+      POSTGRES_DB: dogwalk
+    ports:
+      - "5432:5432"
+    volumes:
+      - dogwalk_pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build: ./api-python
+    container_name: dogwalk-api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://dogwalk:dogwalk@db:5432/dogwalk
+      CORS_ALLOW_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  dogwalk_pgdata:
