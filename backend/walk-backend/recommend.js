@@ -1,56 +1,50 @@
-// recommend.js
+// recommend.js  (완전체 + start->wp1->wp2->start + wp2는 wp1라인 금지 + pace-time only)
 const crypto = require("crypto");
 
 let fetchFn = global.fetch;
 if (!fetchFn) fetchFn = require("node-fetch");
 
 const OSRM_BASE = "http://localhost:5000";
+
+// ✅ 20분에 1km = 50 m/min
 const PACE_M_PER_MIN = 50;
 
-/*이 위도,경도에서
-    이 방향으로 이만큼(m) 걸어가면
-    좌표가 어디?
-*/
+/*이 위도,경도에서 이 방향으로 이만큼(m) 걸어가면 좌표가 어디?*/
 function makeWaypoint(start, meters, deg) {
-  //deg=어느 방향으로갈지(각도,0-360도)
-  const rad = (deg * Math.PI) / 180; //Math.sin, Math.cos은 라디안만 이해함
-  const dLat = (meters * Math.cos(rad)) / 111320; //위도 변화량 계산, 위도 1도:111320m
+  const rad = (deg * Math.PI) / 180;
+  const dLat = (meters * Math.cos(rad)) / 111320;
   const dLng =
-    //경도 변화량 계산
     (meters * Math.sin(rad)) /
     (111320 * Math.cos((start.lat * Math.PI) / 180));
-  return { lat: start.lat + dLat, lng: start.lng + dLng }; //최종 목적지 좌표 완성
+  return { lat: start.lat + dLat, lng: start.lng + dLng };
 }
 
-/* 지도선이 너무 촘촘하면
-   점을 띄엄띄엄 골라서
-   모양은 거의 그대로
-   성능은 훨씬 빠르게
- */
+/* 지도선이 너무 촘촘하면 점을 띄엄띄엄 골라서 성능 개선 */
 function downsampleGeoJSON(geo, maxPoints = 500) {
-  //geo: GeoJSON객체, maxPoints:좌표 최대 허용 개수
-  const coords = geo?.coordinates; //좌표 배열 있으면 가져와
-  if (!Array.isArray(coords) || coords.length <= maxPoints) return geo; //줄일 필요 없으면 그대로 반환
+  const coords = geo?.coordinates;
+  if (!Array.isArray(coords) || coords.length <= maxPoints) return geo;
 
-  const step = Math.ceil(coords.length / maxPoints); //Math.ceil: 무조건 500개를 넘지 않게 함
-  const sampled = []; //줄인 좌표를 차곡차곡 담음
-  for (let i = 0; i < coords.length; i += step) sampled.push(coords[i]); //일정 간격으로 좌표 뽑기
+  const step = Math.ceil(coords.length / maxPoints);
+  const sampled = [];
+  for (let i = 0; i < coords.length; i += step) sampled.push(coords[i]);
 
-  const last = coords[coords.length - 1]; //도착 지점
-  const tail = sampled[sampled.length - 1]; //지금까지 뽑힌 좌표 중 마지막
-  if (!tail || tail[0] !== last[0] || tail[1] !== last[1]) sampled.push(last); //도착점 보장
+  const last = coords[coords.length - 1];
+  const tail = sampled[sampled.length - 1];
+  if (!tail || tail[0] !== last[0] || tail[1] !== last[1]) sampled.push(last);
 
-  return { ...geo, coordinates: sampled }; //원본은 안 건드리고 새 객체 반환
+  return { ...geo, coordinates: sampled };
 }
 
 /**
-    출발->wp->출발 좌표 문자열을 만들고
-    OSRM에 도보 라우팅을 요청한 뒤
-    7초 안에 응답이 오면 첫 번째 경로만 반환하고
-    늦거나 실패하면 에러 처리
-**/
-async function fetchRoundTrip(start, wp, timeoutMs = 7000) {
-  const coords = `${start.lng},${start.lat};${wp.lng},${wp.lat};${start.lng},${start.lat}`;
+ * ✅ start -> wp1 -> wp2 -> start (2 waypoint)
+ */
+async function fetchRoute2wp(start, wp1, wp2, timeoutMs = 7000) {
+  const coords =
+    `${start.lng},${start.lat};` +
+    `${wp1.lng},${wp1.lat};` +
+    `${wp2.lng},${wp2.lat};` +
+    `${start.lng},${start.lat}`;
+
   const url =
     `${OSRM_BASE}/route/v1/foot/${coords}` +
     `?overview=full&geometries=geojson&steps=false`;
@@ -117,12 +111,10 @@ function analyzeRouteOsrm(route) {
   const turnsPerKm = turnCount / distanceKm;
   const sharpTurnRatio = turnCount ? sharpTurnCount / turnCount : 0;
 
-  // 겹침 추정
+  // 겹침 추정 (간단)
   const gridM = 25;
   function gridKey([lng, lat]) {
-    const x = Math.round(
-      (lng * 111320 * Math.cos((lat * Math.PI) / 180)) / gridM
-    );
+    const x = Math.round((lng * 111320 * Math.cos((lat * Math.PI) / 180)) / gridM);
     const y = Math.round((lat * 111320) / gridM);
     return `${x},${y}`;
   }
@@ -137,7 +129,7 @@ function analyzeRouteOsrm(route) {
   const first = new Set(keys.slice(0, half));
   let overlap = 0;
   for (const k of keys.slice(half)) if (first.has(k)) overlap++;
-  const halfOverlapRatio = n - half ? overlap / (n - half) : 0;
+  const halfOverlapRatio = (n - half) ? overlap / (n - half) : 0;
 
   const tags = [];
 
@@ -156,22 +148,15 @@ function analyzeRouteOsrm(route) {
 
   const lines = [];
   lines.push("출발지(현재 위치)로 다시 돌아오는 루트예요.");
-  if (streetTag === "골목 많음")
-    lines.push("방향 전환이 잦아 골목 느낌이 강해요.");
-  else if (streetTag === "큰길 위주")
-    lines.push("큰길 위주로 쭉 걷는 구간이 많아 리듬이 일정해요.");
+  if (streetTag === "골목 많음") lines.push("방향 전환이 잦아 골목 느낌이 강해요.");
+  else if (streetTag === "큰길 위주") lines.push("큰길 위주로 쭉 걷는 구간이 많아 리듬이 일정해요.");
   else lines.push("큰길이랑 골목이 섞여 있어 지루하지 않아요.");
 
-  if (loopTag === "한 바퀴형")
-    lines.push("동선이 겹치는 구간이 적어서 ‘한 바퀴’ 느낌이 강해요.");
-  else if (loopTag === "왕복형")
-    lines.push("되돌아오는 구간이 많아서 왕복 느낌이 나요.");
+  if (loopTag === "한 바퀴형") lines.push("동선이 겹치는 구간이 적어서 ‘한 바퀴’ 느낌이 강해요.");
+  else if (loopTag === "왕복형") lines.push("되돌아오는 구간이 많아서 왕복 느낌이 나요.");
   else lines.push("겹치는 구간과 새 길이 섞인 혼합 스타일이에요.");
 
-  return {
-    tags,
-    explanation: lines.join(" "),
-  };
+  return { tags, explanation: lines.join(" ") };
 }
 
 // ✅ 각도 간격을 점점 촘촘하게 시도해서 최소 3개 확보
@@ -182,7 +167,7 @@ function makeDegs(stepDeg) {
 }
 
 // =========================
-// ✅ routeId 결정적 생성기
+// ✅ deterministic routeId
 // =========================
 function roundCoord(n, p = 5) {
   const k = 10 ** p;
@@ -190,103 +175,140 @@ function roundCoord(n, p = 5) {
 }
 
 function normalizeCoords(coords, precision = 5) {
-  // coords: [[lng,lat], ...]
   if (!Array.isArray(coords)) return [];
-  return coords.map(([lng, lat]) => [
-    roundCoord(lng, precision),
-    roundCoord(lat, precision),
-  ]);
+  return coords.map(([lng, lat]) => [roundCoord(lng, precision), roundCoord(lat, precision)]);
 }
 
-function makeRouteId({ minutes, deg, oneWayM, coords }) {
-  const norm = normalizeCoords(coords, 5); // 5자리면 대략 1m급
+// v4 = 2wp + "다른길 왕복" + pace-time only
+function makeRouteId({ minutes, deg, wp2SideDeg, oneWayM, wp2M, coords }) {
+  const norm = normalizeCoords(coords, 5);
   const payload = {
-    v: 1, // 규칙 변경 시 v만 올리기
+    v: 4,
     minutes,
     deg,
+    wp2SideDeg,            // wp2가 라인에서 얼마나 옆으로 비껴갔는지
     oneWayM: Math.round(oneWayM),
+    wp2M: Math.round(wp2M),
     coords: norm,
   };
-
-  return crypto
-    .createHash("sha1")
-    .update(JSON.stringify(payload))
-    .digest("hex");
+  return crypto.createHash("sha1").update(JSON.stringify(payload)).digest("hex");
 }
 
-async function recommend3({ start, minutes, userId = "anon" }) {
+/**
+ * ✅ 완전체:
+ * - deterministic routeId
+ * - bannedRouteIds 지원
+ * - start->wp1->wp2->start (2 waypoint)
+ * - ✅ "다른 길로 돌아오기" 강제: wp2는 start->wp1 라인에서 일정 각도 이상 벗어난 위치
+ * - ✅ durationSec는 OSRM 시간 무시, 페이스 기반으로만 계산
+ */
+async function recommend3({ start, minutes, userId = "anon", bannedRouteIds = [] }) {
   const targetSec = minutes * 60;
   const targetM = minutes * PACE_M_PER_MIN;
 
-  const oneWayM = Math.max(200, Math.min(targetM / 2, 1200));
+  // wp1: 멀리 찍기(대략 절반거리, 캡)
+  const oneWayM = Math.max(250, Math.min(targetM / 2, 1300));
 
-  // 🔁 1차 60도 → 부족하면 30도 → 20도
+  // ✅ wp2는 "출발 근처" + "라인에서 옆으로 비켜" (return corridor 변경 목적)
+  // - sidePlan: deg+180(반대방향) 기준으로 좌/우로 꺾어서 '다른 길로 복귀' 유도
+  // - wp2DistPlan: start에서 너무 멀면 루프가 되기 쉬워서 0.25~0.45 * oneWayM 추천
+  const sidePlan = [35, -35, 55, -55, 75, -75];     // 라인에서 최소 35도 이상 벗어남
+  const wp2DistPlan = [0.28, 0.35, 0.42];           // start 기준 거리(멀리X, 너무 가까이X)
+
   const stepPlan = [60, 30, 20];
 
+  const bannedSet = new Set(
+    Array.isArray(bannedRouteIds) ? bannedRouteIds.filter((x) => typeof x === "string") : []
+  );
+
   const results = [];
-  const tried = new Set();
+  const triedDeg = new Set();
+  const seenRouteId = new Set();
 
   for (const stepDeg of stepPlan) {
-    const degs = makeDegs(stepDeg).filter((d) => !tried.has(d));
-    degs.forEach((d) => tried.add(d));
+    const degs = makeDegs(stepDeg).filter((d) => !triedDeg.has(d));
+    degs.forEach((d) => triedDeg.add(d));
 
     await Promise.allSettled(
-      degs.map(async (deg) => {
-        try {
-          const wp = makeWaypoint(start, oneWayM, deg);
-          const route = await fetchRoundTrip(start, wp, 7000);
+      degs.flatMap((deg) =>
+        sidePlan.flatMap((side) =>
+          wp2DistPlan.map(async (ratio) => {
+            try {
+              const wp1 = makeWaypoint(start, oneWayM, deg);
 
-          const distanceM = Number(route.distance ?? 0);
+              // ✅ wp2는 "반대방향(되돌아오는 쪽)"에 두되, 라인에서 옆으로(side) 비켜둠
+              //    -> wp1->wp2가 단순 직선 복귀가 아니라 다른 골목/블록을 타기 쉬움
+              const wp2SideDeg = (deg + 180 + side + 360) % 360;
+              const wp2M = Math.max(180, oneWayM * ratio);
+              const wp2 = makeWaypoint(start, wp2M, wp2SideDeg);
 
-          // 🔁 OSRM duration 우선, 없으면 페이스 환산
-          const osrmSec = Number(route.duration ?? 0);
-          const paceSec = (distanceM / PACE_M_PER_MIN) * 60;
-          const durationSec = osrmSec > 0 ? osrmSec : paceSec;
+              // ✅ 안전장치: wp2가 라인에 가까워지지 않게(각도차 최소 보장)
+              // (정확한 직선 판정은 복잡하니, 설계상 side>=35로 강제)
+              const route = await fetchRoute2wp(start, wp1, wp2, 7000);
 
-          const timeDiff = Math.abs(durationSec - targetSec);
-          const distDiff = Math.abs(distanceM - targetM);
-          const score = timeDiff * 1.2 + distDiff * 0.08;
+              const distanceM = Number(route.distance ?? 0);
 
-          // traits는 원본 geometry로 분석
-          const traits = analyzeRouteOsrm(route);
+              // ✅ OSRM duration 무시: 내 페이스로만 시간 계산
+              const durationSec = (distanceM / PACE_M_PER_MIN) * 60;
 
-          // ✅ routeId는 "원본 geometry"로 결정적으로 생성
-          const rawCoords = route?.geometry?.coordinates ?? [];
-          const routeId = makeRouteId({ minutes, deg, oneWayM, coords: rawCoords });
+              const timeDiff = Math.abs(durationSec - targetSec);
+              const distDiff = Math.abs(distanceM - targetM);
+              const score = timeDiff * 1.2 + distDiff * 0.08;
 
-          // 지도 표시용 geometry만 downsample
-          const geometry = downsampleGeoJSON(route.geometry, 500);
+              const traits = analyzeRouteOsrm(route);
 
-          results.push({
-            routeId,
-            deg,
-            score,
-            durationSec,
-            distanceM,
-            geometry,
-            traits,
-          });
-        } catch {
-          // 스킵
-        }
-      })
+              // ✅ 결정적 routeId: 원본 geometry 기반
+              const rawCoords = route?.geometry?.coordinates ?? [];
+              const routeId = makeRouteId({
+                minutes,
+                deg,
+                wp2SideDeg,
+                oneWayM,
+                wp2M,
+                coords: rawCoords,
+              });
+
+              if (bannedSet.has(routeId)) return;
+              if (seenRouteId.has(routeId)) return;
+              seenRouteId.add(routeId);
+
+              const geometry = downsampleGeoJSON(route.geometry, 500);
+
+              results.push({
+                routeId,
+                deg,
+                wp2SideDeg,
+                oneWayM,
+                wp2M,
+                score,
+                durationSec,
+                distanceM,
+                geometry,
+                traits,
+              });
+            } catch {
+              // 스킵
+            }
+          })
+        )
+      )
     );
 
     const pool = results
-      .filter(
-        (r) =>
-          r.durationSec >= targetSec * 0.7 && r.durationSec <= targetSec * 1.35
-      )
+      .filter((r) => r.durationSec >= targetSec * 0.7 && r.durationSec <= targetSec * 1.35)
       .sort((a, b) => a.score - b.score);
 
     if (pool.length >= 3) {
       return pool.slice(0, 3).map((r, idx) => ({
-        routeId: r.routeId, // ✅ 결정적 routeId
+        routeId: r.routeId,
         userId,
         minutes,
         deg: r.deg,
-        oneWayM,
+        wp2SideDeg: r.wp2SideDeg,
+        oneWayM: Math.round(r.oneWayM),
+        wp2M: Math.round(r.wp2M),
         title: `${minutes}분 산책 추천 ${idx + 1}`,
+        // ✅ 페이스 기반 시간
         durationSec: Math.round(r.durationSec),
         distanceM: Math.round(r.distanceM),
         geometry: r.geometry,
@@ -302,11 +324,13 @@ async function recommend3({ start, minutes, userId = "anon" }) {
     .sort((a, b) => a.score - b.score)
     .slice(0, 3)
     .map((r, idx) => ({
-      routeId: r.routeId, // ✅ 결정적 routeId
+      routeId: r.routeId,
       userId,
       minutes,
       deg: r.deg,
-      oneWayM,
+      wp2SideDeg: r.wp2SideDeg,
+      oneWayM: Math.round(r.oneWayM),
+      wp2M: Math.round(r.wp2M),
       title: `${minutes}분 산책 추천 ${idx + 1}`,
       durationSec: Math.round(r.durationSec),
       distanceM: Math.round(r.distanceM),
