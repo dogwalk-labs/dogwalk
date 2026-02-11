@@ -1,3 +1,4 @@
+// recommend.js
 const crypto = require("crypto");
 
 let fetchFn = global.fetch;
@@ -10,10 +11,12 @@ const PACE_M_PER_MIN = 50;
     이 방향으로 이만큼(m) 걸어가면
     좌표가 어디?
 */
-function makeWaypoint(start, meters, deg) { //deg=어느 방향으로갈지(각도,0-360도)
+function makeWaypoint(start, meters, deg) {
+  //deg=어느 방향으로갈지(각도,0-360도)
   const rad = (deg * Math.PI) / 180; //Math.sin, Math.cos은 라디안만 이해함
   const dLat = (meters * Math.cos(rad)) / 111320; //위도 변화량 계산, 위도 1도:111320m
-  const dLng = //경도 변화량 계산
+  const dLng =
+    //경도 변화량 계산
     (meters * Math.sin(rad)) /
     (111320 * Math.cos((start.lat * Math.PI) / 180));
   return { lat: start.lat + dLat, lng: start.lng + dLng }; //최종 목적지 좌표 완성
@@ -24,7 +27,8 @@ function makeWaypoint(start, meters, deg) { //deg=어느 방향으로갈지(각�
    모양은 거의 그대로
    성능은 훨씬 빠르게
  */
-function downsampleGeoJSON(geo, maxPoints = 500) { //geo: GeoJSON객체, maxPoints:좌표 최대 허용 개수
+function downsampleGeoJSON(geo, maxPoints = 500) {
+  //geo: GeoJSON객체, maxPoints:좌표 최대 허용 개수
   const coords = geo?.coordinates; //좌표 배열 있으면 가져와
   if (!Array.isArray(coords) || coords.length <= maxPoints) return geo; //줄일 필요 없으면 그대로 반환
 
@@ -133,7 +137,7 @@ function analyzeRouteOsrm(route) {
   const first = new Set(keys.slice(0, half));
   let overlap = 0;
   for (const k of keys.slice(half)) if (first.has(k)) overlap++;
-  const halfOverlapRatio = (n - half) ? overlap / (n - half) : 0;
+  const halfOverlapRatio = n - half ? overlap / (n - half) : 0;
 
   const tags = [];
 
@@ -152,12 +156,16 @@ function analyzeRouteOsrm(route) {
 
   const lines = [];
   lines.push("출발지(현재 위치)로 다시 돌아오는 루트예요.");
-  if (streetTag === "골목 많음") lines.push("방향 전환이 잦아 골목 느낌이 강해요.");
-  else if (streetTag === "큰길 위주") lines.push("큰길 위주로 쭉 걷는 구간이 많아 리듬이 일정해요.");
+  if (streetTag === "골목 많음")
+    lines.push("방향 전환이 잦아 골목 느낌이 강해요.");
+  else if (streetTag === "큰길 위주")
+    lines.push("큰길 위주로 쭉 걷는 구간이 많아 리듬이 일정해요.");
   else lines.push("큰길이랑 골목이 섞여 있어 지루하지 않아요.");
 
-  if (loopTag === "한 바퀴형") lines.push("동선이 겹치는 구간이 적어서 ‘한 바퀴’ 느낌이 강해요.");
-  else if (loopTag === "왕복형") lines.push("되돌아오는 구간이 많아서 왕복 느낌이 나요.");
+  if (loopTag === "한 바퀴형")
+    lines.push("동선이 겹치는 구간이 적어서 ‘한 바퀴’ 느낌이 강해요.");
+  else if (loopTag === "왕복형")
+    lines.push("되돌아오는 구간이 많아서 왕복 느낌이 나요.");
   else lines.push("겹치는 구간과 새 길이 섞인 혼합 스타일이에요.");
 
   return {
@@ -173,6 +181,39 @@ function makeDegs(stepDeg) {
   return out;
 }
 
+// =========================
+// ✅ routeId 결정적 생성기
+// =========================
+function roundCoord(n, p = 5) {
+  const k = 10 ** p;
+  return Math.round(n * k) / k;
+}
+
+function normalizeCoords(coords, precision = 5) {
+  // coords: [[lng,lat], ...]
+  if (!Array.isArray(coords)) return [];
+  return coords.map(([lng, lat]) => [
+    roundCoord(lng, precision),
+    roundCoord(lat, precision),
+  ]);
+}
+
+function makeRouteId({ minutes, deg, oneWayM, coords }) {
+  const norm = normalizeCoords(coords, 5); // 5자리면 대략 1m급
+  const payload = {
+    v: 1, // 규칙 변경 시 v만 올리기
+    minutes,
+    deg,
+    oneWayM: Math.round(oneWayM),
+    coords: norm,
+  };
+
+  return crypto
+    .createHash("sha1")
+    .update(JSON.stringify(payload))
+    .digest("hex");
+}
+
 async function recommend3({ start, minutes, userId = "anon" }) {
   const targetSec = minutes * 60;
   const targetM = minutes * PACE_M_PER_MIN;
@@ -186,8 +227,8 @@ async function recommend3({ start, minutes, userId = "anon" }) {
   const tried = new Set();
 
   for (const stepDeg of stepPlan) {
-    const degs = makeDegs(stepDeg).filter(d => !tried.has(d));
-    degs.forEach(d => tried.add(d));
+    const degs = makeDegs(stepDeg).filter((d) => !tried.has(d));
+    degs.forEach((d) => tried.add(d));
 
     await Promise.allSettled(
       degs.map(async (deg) => {
@@ -209,10 +250,22 @@ async function recommend3({ start, minutes, userId = "anon" }) {
           // traits는 원본 geometry로 분석
           const traits = analyzeRouteOsrm(route);
 
+          // ✅ routeId는 "원본 geometry"로 결정적으로 생성
+          const rawCoords = route?.geometry?.coordinates ?? [];
+          const routeId = makeRouteId({ minutes, deg, oneWayM, coords: rawCoords });
+
           // 지도 표시용 geometry만 downsample
           const geometry = downsampleGeoJSON(route.geometry, 500);
 
-          results.push({ deg, score, durationSec, distanceM, geometry, traits });
+          results.push({
+            routeId,
+            deg,
+            score,
+            durationSec,
+            distanceM,
+            geometry,
+            traits,
+          });
         } catch {
           // 스킵
         }
@@ -220,12 +273,15 @@ async function recommend3({ start, minutes, userId = "anon" }) {
     );
 
     const pool = results
-      .filter(r => r.durationSec >= targetSec * 0.7 && r.durationSec <= targetSec * 1.35)
+      .filter(
+        (r) =>
+          r.durationSec >= targetSec * 0.7 && r.durationSec <= targetSec * 1.35
+      )
       .sort((a, b) => a.score - b.score);
 
     if (pool.length >= 3) {
       return pool.slice(0, 3).map((r, idx) => ({
-        routeId: crypto.randomUUID(),
+        routeId: r.routeId, // ✅ 결정적 routeId
         userId,
         minutes,
         deg: r.deg,
@@ -246,7 +302,7 @@ async function recommend3({ start, minutes, userId = "anon" }) {
     .sort((a, b) => a.score - b.score)
     .slice(0, 3)
     .map((r, idx) => ({
-      routeId: crypto.randomUUID(),
+      routeId: r.routeId, // ✅ 결정적 routeId
       userId,
       minutes,
       deg: r.deg,

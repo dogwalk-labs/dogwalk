@@ -15,7 +15,11 @@ app.post("/recommend", async (req, res) => {
 
   try {
     const { start, minutes, userId } = req.body ?? {};
-    if (!start || !Number.isFinite(Number(start.lat)) || !Number.isFinite(Number(start.lng))) {
+    if (
+      !start ||
+      !Number.isFinite(Number(start.lat)) ||
+      !Number.isFinite(Number(start.lng))
+    ) {
       return res.status(400).json({ error: "start{lat,lng} 필요" });
     }
     if (!Number.isFinite(Number(minutes))) {
