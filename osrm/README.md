@@ -30,29 +30,42 @@ OSRM 서버는 본 레포에 포함되어 있지 않으며,
 
 ---
 
-### 1️⃣ OSRM이란?
+#OSRM이란?
 - 도보/자동차 등의 **경로를 계산해주는 서버**
 - 이 프로젝트에서는 **산책 경로 계산**에 사용합니다.
 
 ---
 
-### 2️⃣ OSRM 서버 실행 (Docker 사용)
-
-Docker가 설치되어 있다는 전제 하에,  
-아래 순서대로 진행하면 됩니다.
+# 🐶 Dogwalk OSRM 실행 방법
 
 #### (1) 지도 데이터 준비
 원하는 지역의 `.pbf` 파일을 준비합니다.  
-(예: South Korea)
+(예: South Korea, osm들어가서 다운받기)
 
-#### (2) OSRM 컨테이너 실행
-OSRM 실행 방법은 여러 가지가 있으며,  
-아래는 **가장 일반적인 Docker 실행 방식 예시**입니다.
 
-```bash
-docker run -d ^
-  -p 5000:5000 ^
-  -v <지도데이터_폴더>:/data ^
-  osrm/osrm-backend ^
-  osrm-routed --algorithm mld /data/<지도파일명>.osrm
+## 1️⃣ 준비
+- Docker Desktop 설치
+- south-korea.osm.pbf 파일을 아래 위치에 넣기(다운파일이랑 이름 통일!)
 
+dogwalk/osrm/data/south-korea.osm.pbf
+
+## 2️⃣ 실행 (자동 전처리 + 서버 실행)
+프로젝트 루트(dogwalk)에서:
+
+docker compose up
+
+처음 실행 시:
+- extract
+- partition
+- customize
+
+자동 진행됩니다.
+완료 후 OSRM 서버가 5000 포트에서 실행됩니다.
+
+## 3️⃣ 테스트
+
+브라우저에서:
+
+http://localhost:5000/route/v1/foot/126.8446,37.4979;126.8870,37.5077?overview=false
+
+JSON 나오면 성공 🎉

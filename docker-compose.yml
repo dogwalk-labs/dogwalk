@@ -1,0 +1,39 @@
+services:
+  osrm-preprocess:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: dogwalk-osrm-preprocess
+    working_dir: /data
+    volumes:
+      - ./osrm/data:/data
+      - ./osrm/profiles:/profiles
+    command: >
+      bash -lc "
+      set -e;
+      if [ ! -f /data/south-korea.osm.pbf ]; then
+        echo '❌ osrm/data 폴더에 south-korea.osm.pbf 파일을 넣어주세요.';
+        exit 1;
+      fi
+      echo '==> extract';
+      osrm-extract -p /profiles/foot.lua /data/south-korea.osm.pbf;
+      echo '==> partition';
+      osrm-partition /data/south-korea.osrm;
+      echo '==> customize';
+      osrm-customize /data/south-korea.osrm;
+      echo '✅ preprocess 완료';
+      "
+    restart: "no"
+
+  osrm-routed:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: dogwalk-osrm
+    working_dir: /data
+    volumes:
+      - ./osrm/data:/data
+    depends_on:
+      osrm-preprocess:
+        condition: service_completed_successfully
+    command: >
+      osrm-routed --algorithm mld /data/south-korea.osrm
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
