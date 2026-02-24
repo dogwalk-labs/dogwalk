@@ -1,4 +1,47 @@
 services:
+  osrm-preprocess:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: dogwalk-osrm-preprocess
+    working_dir: /data
+    volumes:
+      - ./osrm/data:/data
+    command:
+      - sh
+      - -lc
+      - |
+        set -e
+        if [ ! -f /data/south-korea.osm.pbf ]; then
+          echo "❌ backend/osrm/data/south-korea.osm.pbf 파일을 넣어주세요."
+          exit 1
+        fi
+        echo "==> extract"
+        osrm-extract -p /opt/foot.lua /data/south-korea.osm.pbf
+        echo "==> partition"
+        osrm-partition /data/south-korea.osrm
+        echo "==> customize"
+        osrm-customize /data/south-korea.osrm
+        echo "✅ preprocess 완료"
+    restart: "no"
+
+  osrm-routed:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    container_name: dogwalk-osrm
+    working_dir: /data
+    volumes:
+      - ./osrm/data:/data
+    depends_on:
+      osrm-preprocess:
+        condition: service_completed_successfully
+    command: ["osrm-routed", "--algorithm", "mld", "/data/south-korea.osrm"]
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/route/v1/foot/126.9780,37.5665;126.9785,37.5659?overview=false"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   db:
     image: postgis/postgis:16-3.4
     container_name: dogwalk-db
@@ -11,6 +54,22 @@ services:
     volumes:
       - dogwalk_pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dogwalk -d dogwalk"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  recommender:
+    build: ./walk-backend
+    container_name: dogwalk-recommender
+    environment:
+      OSRM_BASE_URL: "http://osrm-routed:5000"
+      OSRM_PROFILE: "foot"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - osrm-routed
 
   api:
     build: ./api-python
@@ -18,10 +77,17 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://dogwalk:dogwalk@db:5432/dogwalk
       CORS_ALLOW_ORIGINS: "*"
+      OSRM_BASE_URL: "http://osrm-routed:5000"
+      OSRM_PROFILE: "foot"
+      OSRM_TIMEOUT_SEC: "5"
+      RECOMMENDER_BASE_URL: "http://recommender:8080"   # 추가
+      RECOMMENDER_TIMEOUT_SEC: "8"                      # 추가
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - osrm-routed
+      - recommender
 
 volumes:
   dogwalk_pgdata:

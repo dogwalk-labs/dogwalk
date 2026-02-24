@@ -3,8 +3,10 @@ const crypto = require("crypto");
 let fetchFn = global.fetch;
 if (!fetchFn) fetchFn = require("node-fetch");
 
-const OSRM_BASE = "http://localhost:5000";
-const PACE_M_PER_MIN = 50;
+const OSRM_BASE = process.env.OSRM_BASE_URL || "http://localhost:5000";
+const OSRM_PROFILE = process.env.OSRM_PROFILE || "foot";
+
+const PACE_M_PER_MIN = 80; // 1분당 80m (평균 도보 속도)
 
 /*이 위도,경도에서
     이 방향으로 이만큼(m) 걸어가면

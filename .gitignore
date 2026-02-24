@@ -12,7 +12,8 @@ node_modules/
 .env
 
 # OSRM
-osrm/
+osrm/data/
+*.pbf
 *.osrm
 *.osrm.*
 
