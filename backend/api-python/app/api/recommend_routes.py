@@ -70,7 +70,7 @@ async def osrm_route(req: OsrmTestRequest):
 
 # Recommend Endpoint (기존 로직 유지)
 @router.post("/recommend")
-def recommend(req: RecommendRequest, db: Session = Depends(get_db)):
+async def recommend(req: RecommendRequest, db: Session = Depends(get_db)):
 
     liked_rows = db.execute(
         text("""
@@ -94,12 +94,24 @@ def recommend(req: RecommendRequest, db: Session = Depends(get_db)):
         "meta": r["meta"],
     } for r in liked_rows]
 
+# 좋아요 없으면 node 추천 호출
     if not liked_routes:
-        return {"routes": [], "note": "No liked routes yet."}
-
-    combined = liked_routes[:]
-
-    while len(combined) < 3:
-        combined.append(combined[-1])
-
-    return {"routes": combined[:3]}
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    "http://recommender:8080/recommend",
+                    json={
+                        "start": req.start.dict(),
+                        "minutes": req.minutes,
+                        "userId": str(req.user_id),
+                    },
+                    timeout=30.0
+                )
+                r.raise_for_status()
+                return r.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Recommender call failed: {type(e).__name__}: {repr(e)}"
+            )
+    return {"routes": liked_routes[:3]}
