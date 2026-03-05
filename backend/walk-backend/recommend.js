@@ -1,11 +1,14 @@
-// recommend.js (ESM 완전체 - 인기경로 구조 대응)
+// recommend.js (ESM 완전체 - count + bannedRouteIds 지원 + deterministic routeId)
 import crypto from "crypto";
 
 const OSRM_BASE = process.env.OSRM_BASE_URL || "http://localhost:5000";
 const OSRM_PROFILE = process.env.OSRM_PROFILE || "foot";
 
-const PACE_M_PER_MIN = 80;
+const PACE_M_PER_MIN = 80; // 1분당 80m
 const fetchFn = global.fetch;
+if (!fetchFn) {
+  throw new Error("fetch is not available. Use Node 18+ (recommended Node 18/20/22).");
+}
 
 /* ------------------------------
    🔥 geometry 기반 고정 routeId
@@ -144,14 +147,28 @@ function makeDegs(stepDeg) {
 }
 
 /* ===================================================
-   🔥 최종 recommend3 (count 옵션 + 고정 routeId)
+   🔥 최종 recommend3
+   - count 옵션 (1~3 권장)
+   - deterministic routeId
+   - bannedRouteIds 지원 (추천 제외)
 =================================================== */
 async function recommend3({
   start,
   minutes,
   userId = "anon",
-  count = 3, // 🔥 FastAPI가 2 또는 3 요청 가능
+  count = 3,
+  bannedRouteIds = [],
 }) {
+  // ✅ 입력 방어
+  const cRaw = Number(count);
+  const c = Number.isFinite(cRaw) ? Math.max(1, Math.min(3, Math.floor(cRaw))) : 3;
+
+  const banned = new Set(
+    Array.isArray(bannedRouteIds)
+      ? bannedRouteIds.filter((x) => typeof x === "string" && x.length > 0)
+      : []
+  );
+
   const targetSec = minutes * 60;
   const targetM = minutes * PACE_M_PER_MIN;
   const oneWayM = Math.max(200, Math.min(targetM / 2, 1200));
@@ -182,6 +199,9 @@ async function recommend3({
           const traits = analyzeRouteOsrm(route);
           const geometry = downsampleGeoJSON(route.geometry, 500);
 
+          const routeId = makeDeterministicRouteId(geometry);
+          if (banned.has(routeId)) return; // ✅ 제외
+
           results.push({
             deg,
             score,
@@ -189,8 +209,11 @@ async function recommend3({
             distanceM,
             geometry,
             traits,
+            routeId,
           });
-        } catch {}
+        } catch {
+          // ignore
+        }
       })
     );
 
@@ -202,9 +225,9 @@ async function recommend3({
       )
       .sort((a, b) => a.score - b.score);
 
-    if (pool.length >= count) {
-      return pool.slice(0, count).map((r, idx) => ({
-        routeId: makeDeterministicRouteId(r.geometry), // 🔥 고정 ID
+    if (pool.length >= c) {
+      return pool.slice(0, c).map((r, idx) => ({
+        routeId: r.routeId,
         userId,
         minutes,
         deg: r.deg,
@@ -219,14 +242,15 @@ async function recommend3({
     }
   }
 
-  if (results.length === 0)
+  if (results.length === 0) {
     throw new Error("No routes (OSRM/네트워크 확인)");
+  }
 
   return results
     .sort((a, b) => a.score - b.score)
-    .slice(0, count)
+    .slice(0, c)
     .map((r, idx) => ({
-      routeId: makeDeterministicRouteId(r.geometry),
+      routeId: r.routeId,
       userId,
       minutes,
       deg: r.deg,
@@ -240,4 +264,4 @@ async function recommend3({
     }));
 }
 
-export { recommend3, analyzeRouteOsrm };
+export { recommend3, analyzeRouteOsrm, makeDeterministicRouteId };
