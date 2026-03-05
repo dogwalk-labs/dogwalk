@@ -169,6 +169,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    transform: [{ translateY: 50 }],
   },
   recommendText: {
     color: "#fff",
@@ -191,4 +192,5 @@ const styles = StyleSheet.create({
   dotActive: {
     backgroundColor: "rgba(0,0,0,0.45)",
   },
+
 });
