@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, Pressable, SafeAreaView, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
+import WalkControlBar from "./WalkControlBar";
+import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
+import WalkReviewScreen from "./WalkReviewScreen";
 
 
 const BROWN = "#8E6A3D";
@@ -106,6 +109,10 @@ export default function RouteSelectScreen({ navigation, route }) {
   );
 
   const [selected, setSelected] = useState("A");
+  const [walkStarted, setWalkStarted] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showWalkReview, setShowWalkReview] = useState(false);
+  const [lastWalkStats, setLastWalkStats] = useState(null);
 
   // 내 위치
   const [coords, setCoords] = useState(null);
@@ -149,6 +156,11 @@ export default function RouteSelectScreen({ navigation, route }) {
     webviewRef.current.injectJavaScript(js);
   }, [coords, mapReady]);
 
+  const onStartWalk = () => {
+    console.log("START WALK", { selected, minutes, coords });
+    setWalkStarted(true);
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -182,32 +194,82 @@ export default function RouteSelectScreen({ navigation, route }) {
         </View>
 
         {/* 코스 A/B/C  */}
-        <View style={styles.courseRow}>
-          {routes.map((r) => {
-            const on = r.id === selected;
-            return (
-              <Pressable
-                key={r.id}
-                style={[styles.courseChip, on && styles.courseChipOn]}
-                onPress={() => setSelected(r.id)}
-              >
-                <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
-                  {r.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {!walkStarted && (
+          <>
+            <View style={styles.courseRow}>
+              {routes.map((r) => {
+                const on = r.id === selected;
+                return (
+                  <Pressable
+                    key={r.id}
+                    style={[styles.courseChip, on && styles.courseChipOn]}
+                    onPress={() => setSelected(r.id)}
+                  >
+                    <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
+                      {r.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-        {/* 산책 시작하기 버튼 */}
-        <Pressable
-          style={styles.startBtn}
-          onPress={() => {
-            console.log("START WALK", { selected, minutes, coords });
-          }}
+            {/* 산책 시작하기 버튼 */}
+            <Pressable
+              style={styles.startBtn}
+              onPress={onStartWalk}
+            >
+              <Text style={styles.startText}>산책 시작하기</Text>
+            </Pressable>
+          </>
+        )}
+
+        {walkStarted && (
+          <WalkControlBar
+            onEndWalk={({ elapsedSeconds, distanceKm }) => {
+              setLastWalkStats({ elapsedSeconds, distanceKm });
+              setShowEndConfirm(true);
+            }}
+          />
+        )}
+
+        <Modal
+          visible={showEndConfirm}
+          animationType="slide"
+          onRequestClose={() => setShowEndConfirm(false)}
         >
-          <Text style={styles.startText}>산책 시작하기</Text>
-        </Pressable>
+          <EndWalkConfirmScreen
+            onClose={() => setShowEndConfirm(false)}
+            onConfirm={() => {
+              setWalkStarted(false);
+              setShowEndConfirm(false);
+              setShowWalkReview(true);
+            }}
+          />
+        </Modal>
+
+        <Modal
+          visible={showWalkReview}
+          animationType="slide"
+          onRequestClose={() => setShowWalkReview(false)}
+        >
+          <WalkReviewScreen
+            onGoHome={() => {
+              setShowWalkReview(false);
+              setLastWalkStats(null);
+              navigation.popToTop();
+            }}
+            walkTime={
+              lastWalkStats
+                ? `${Math.floor(lastWalkStats.elapsedSeconds / 60)}m ${lastWalkStats.elapsedSeconds % 60}s`
+                : "0m 0s"
+            }
+            walkDistance={
+              lastWalkStats
+                ? `${lastWalkStats.distanceKm.toFixed(1)}km`
+                : "0.0km"
+            }
+          />
+        </Modal>
       </View>
     </SafeAreaView>
   );
