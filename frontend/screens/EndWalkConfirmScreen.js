@@ -1,12 +1,20 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, SafeAreaView, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  Image,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const BROWN = "#8E6A3D";
+const BG = "#FBF3DD";
+const BROWN = "#B08B5A";
 const TEXT = "#2B2B2B";
 
 /**
- * 산책 종료 확인 화면 (첫 번째 사진)
+ * 산책 종료 확인 화면
  * - 뒤로가기: 취소 후 산책 진행 화면으로
  * - 종료하기: 산책 종료 (부모에서 onConfirm 처리)
  */
@@ -14,11 +22,7 @@ export default function EndWalkConfirmScreen({ onClose, onConfirm }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={onClose}
-          hitSlop={12}
-        >
+        <Pressable style={styles.backBtn} onPress={onClose} hitSlop={12}>
           <Ionicons name="chevron-back" size={28} color="#666" />
         </Pressable>
 
@@ -31,12 +35,16 @@ export default function EndWalkConfirmScreen({ onClose, onConfirm }) {
         </View>
 
         <Text style={styles.title}>
-          <Text style={styles.titleLine1}>오늘의 산책을</Text>
-          {"\n"}
-          <Text style={styles.titleLine2}>여기서 종료할까요?</Text>
+          오늘의 산책을{"\n"}여기서 종료할까요?
         </Text>
 
-        <Pressable style={styles.confirmButton} onPress={onConfirm}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.confirmButton,
+            pressed && styles.confirmButtonPressed,
+          ]}
+          onPress={onConfirm}
+        >
           <Text style={styles.confirmButtonText}>종료하기</Text>
         </Pressable>
       </View>
@@ -47,59 +55,68 @@ export default function EndWalkConfirmScreen({ onClose, onConfirm }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#f8f4ed",
+    backgroundColor: BG,
   },
+
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    backgroundColor: BG,
+    paddingHorizontal: 22,
     alignItems: "center",
   },
+
   backBtn: {
-    alignSelf: "flex-start",
+    position: "absolute",
+    top: 8,
+    left: 10,
     padding: 8,
+    zIndex: 10,
   },
+
   graphic: {
-    marginTop: 32,
+    marginTop: 110,
     alignItems: "center",
   },
+
   graphicImage: {
-    width: 600,
-    height: 440,
+    width: 420,
+    height: 300,
   },
+
   title: {
-    marginTop: 36,
+    marginTop: 8,
     textAlign: "center",
-  },
-  titleLine1: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: TEXT,
-    lineHeight: 28,
+    lineHeight: 34,
+    transform: [{ translateY: -18 }],
   },
-  titleLine2: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: TEXT,
-    lineHeight: 28,
-  },
+
   confirmButton: {
-    marginTop: 40,
     width: "100%",
-    maxWidth: 320,
-    height: 56,
-    borderRadius: 16,
+    maxWidth: 340,
+    height: 68,
     backgroundColor: BROWN,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 60,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
+
+  confirmButtonPressed: {
+    transform: [{ translateY: -10 }, { scale: 0.97 }],
+    opacity: 0.9,
+  },
+
   confirmButtonText: {
     color: "#fff",
-    fontSize: 17,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "900",
   },
 });

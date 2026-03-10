@@ -1,8 +1,17 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Dimensions, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+  Image,
+} from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const BROWN = "#8E6A3D";
+
+const BG = "#FBF3DD";
+const BROWN = "#B08B5A";
 const TEXT = "#2B2B2B";
 
 /**
@@ -18,10 +27,18 @@ export default function WalkReviewSlide3({ onGoHome }) {
           resizeMode="contain"
         />
       </View>
+
       <Text style={styles.title}>
         다음 산책 때{"\n"}또 만나요!
       </Text>
-      <Pressable style={styles.homeButton} onPress={onGoHome}>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.homeButton,
+          pressed && styles.homeButtonPressed,
+        ]}
+        onPress={onGoHome}
+      >
         <Text style={styles.homeButtonText}>홈으로</Text>
       </Pressable>
     </View>
@@ -31,41 +48,53 @@ export default function WalkReviewSlide3({ onGoHome }) {
 const styles = StyleSheet.create({
   slide: {
     flex: 1,
+    backgroundColor: BG,
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
   },
+
   graphicWrap: {
-    marginBottom: -20,
+    marginBottom: -10,
   },
+
   graphicImage: {
     width: 400,
     height: 240,
   },
+
   title: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: TEXT,
     textAlign: "center",
-    lineHeight: 32,
+    lineHeight: 34,
     marginBottom: 40,
   },
+
   homeButton: {
     width: "100%",
-    maxWidth: 280,
-    height: 56,
-    borderRadius: 16,
+    maxWidth: 340,
+    height: 68,
     backgroundColor: BROWN,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
+
+  homeButtonPressed: {
+    transform: [{ scale: 0.97 }],
+    opacity: 0.9,
+  },
+
   homeButtonText: {
     color: "#fff",
-    fontSize: 17,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "900",
   },
 });
