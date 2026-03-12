@@ -11,11 +11,27 @@ from app.core.database import get_db
 router = APIRouter(prefix="/paths", tags=["paths"])
 
 
+# =========================================================
+# [수정 1] geometry 입력 모델 추가
+# Node/프론트에서 넘기는 GeoJSON LineString 형태를 받기 위함
+# =========================================================
+class Geometry(BaseModel):
+    type: str
+    coordinates: list[list[float]]
+
+
 class CreatePathRequest(BaseModel):
     user_id: UUID
     minutes: int
     distance_m: int
     duration_sec: int
+
+    # =====================================================
+    # [수정 2] geometry 추가
+    # 예: {"type":"LineString","coordinates":[[lng,lat], ...]}
+    # =====================================================
+    geometry: Geometry | None = None
+
     meta: dict | None = None  # optional
 
 
@@ -32,10 +48,37 @@ def create_path(req: CreatePathRequest, db: Session = Depends(get_db)):
     path_id = str(uuid4())
     meta_json = json.dumps(req.meta or {})
 
+    # =========================================================
+    # [수정 3] geometry가 있으면 geom 컬럼에 저장
+    # ST_GeomFromGeoJSON + ST_SetSRID(4326)
+    # geometry 없으면 geom은 NULL
+    # =========================================================
+    geometry_json = json.dumps(req.geometry.model_dump()) if req.geometry else None
+
     db.execute(
         text("""
-            INSERT INTO paths (id, user_id, minutes, distance_m, duration_sec, meta)
-            VALUES (:id, :uid, :min, :dist, :dur, CAST(:meta AS jsonb))
+            INSERT INTO paths (
+                id,
+                user_id,
+                minutes,
+                distance_m,
+                duration_sec,
+                geom,
+                meta
+            )
+            VALUES (
+                :id,
+                :uid,
+                :min,
+                :dist,
+                :dur,
+                CASE
+                    WHEN :geometry IS NOT NULL
+                    THEN ST_SetSRID(ST_GeomFromGeoJSON(:geometry), 4326)
+                    ELSE NULL
+                END,
+                CAST(:meta AS jsonb)
+            )
         """),
         {
             "id": path_id,
@@ -43,6 +86,7 @@ def create_path(req: CreatePathRequest, db: Session = Depends(get_db)):
             "min": int(req.minutes),
             "dist": int(req.distance_m),
             "dur": int(req.duration_sec),
+            "geometry": geometry_json,
             "meta": meta_json,
         },
     )
