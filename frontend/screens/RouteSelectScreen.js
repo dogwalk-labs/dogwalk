@@ -9,19 +9,12 @@ const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
-// ✅ 카카오 JS 키
-const KAKAO_JS_KEY = process.env.REACT_APP_KAKAO_JS_KEY;
+// ⚠️ GitHub 올리기 전엔 반드시 env로 빼는 게 맞음
+const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
-// ✅ 형님 PC IP로 바꾸기 (폰 Expo Go면 localhost 절대 X)
-// 예: "http://192.168.0.12:8080"
-const API_BASE_URL = "http://192.168.35.235:8080"; // <- 여기 바꿔!
+// 형님 PC IP
+const API_BASE_URL = "http://192.168.35.235:8080";
 
-/**
- * WebView HTML
- * - setMyLocation(lat,lng): 내 위치 마커
- * - setRoutes(routes): routes[0..2] 폴리라인 생성(아웃라인+본선)
- * - selectRoute(idx): idx 하나만 표시 + bounds 맞춤
- */
 const makeHtml = () => `
 <!doctype html>
 <html>
@@ -41,18 +34,16 @@ const makeHtml = () => `
     var map = null;
     var myMarker = null;
 
-    // ✅ routePolylines: [{outline, main, _path, _styleNormal, _styleSelected}, ...]
+    // [{ outline, main, _path, _styleNormal, _styleSelected, _styleDim }, ...]
     var routePolylines = [];
     var routeBounds = [];
-
-// ++여기부터 추가
 
     function clearRoutes() {
       for (var i = 0; i < routePolylines.length; i++) {
         var p = routePolylines[i];
         if (!p) continue;
-        try { p.outline?.setMap(null); } catch(e) {}
-        try { p.main?.setMap(null); } catch(e) {}
+        try { p.outline && p.outline.setMap(null); } catch(e) {}
+        try { p.main && p.main.setMap(null); } catch(e) {}
       }
       routePolylines = [];
       routeBounds = [];
@@ -64,16 +55,6 @@ const makeHtml = () => `
       return bounds;
     }
 
-    // ✅ 점 너무 많으면 지저분해져서 줄임 (간단 thinning)
-    function thinCoords(coords, step) {
-      if (!coords || coords.length <= 2) return coords || [];
-      var out = [];
-      for (var i = 0; i < coords.length; i += step) out.push(coords[i]);
-      out.push(coords[coords.length - 1]); // 마지막 점 포함
-      return out;
-    }
-
-    // ✅ 아웃라인+본선 세트 생성
     function makeStroke(path, opts) {
       var outline = new kakao.maps.Polyline({
         path: path,
@@ -81,6 +62,7 @@ const makeHtml = () => `
         strokeColor: opts.outColor,
         strokeOpacity: opts.outOpacity,
         strokeStyle: "solid",
+        zIndex: opts.zIndex || 1,
       });
 
       var main = new kakao.maps.Polyline({
@@ -89,6 +71,7 @@ const makeHtml = () => `
         strokeColor: opts.mainColor,
         strokeOpacity: opts.mainOpacity,
         strokeStyle: "solid",
+        zIndex: (opts.zIndex || 1) + 1,
       });
 
       outline.setMap(null);
@@ -97,7 +80,6 @@ const makeHtml = () => `
       return { outline, main };
     }
 
-    // ✅ RN이 좌표를 주입하면 내 위치로 이동 + 마커 표시
     window.setMyLocation = function(lat, lng) {
       try {
         if (!window.kakao || !kakao.maps || !map) {
@@ -106,9 +88,9 @@ const makeHtml = () => `
         }
 
         var pos = new kakao.maps.LatLng(lat, lng);
-        map.setCenter(pos); //지도 중심 이동
+        map.setCenter(pos);
 
-        if (!myMarker) { //마커 생성/업데이트
+        if (!myMarker) {
           myMarker = new kakao.maps.Marker({ position: pos });
           myMarker.setMap(map);
         } else {
@@ -119,46 +101,58 @@ const makeHtml = () => `
       }
     };
 
-    // ✅ RN이 routes(GeoJSON coordinates)를 주입하면: 폴리라인 3개 생성
-    // routes: [{ geometry: { coordinates: [[lng,lat], ...] }, ... }, ...]
     window.setRoutes = function(routes) {
       try {
         if (!window.kakao || !kakao.maps || !map) {
           send("setRoutes called but map not ready");
           return;
         }
+
         clearRoutes();
 
-        // ++추가 ✅ 산책앱 느낌(브라운+화이트 아웃라인)
-        var styleNormal = {
-          outW: 10,
+        var styleDim = {
+          outW: 4,
           outColor: "#FFFFFF",
-          outOpacity: 0.95,
-          mainW: 7,
+          outOpacity: 0.75,
+          mainW: 4,
           mainColor: "${BROWN}",
-          mainOpacity: 0.92,
+          mainOpacity: 0.35,
+          zIndex: 1
         };
 
-        // 선택된 루트는 살짝 더 선명/굵게
+        var styleNormal = {
+          outW: 5,
+          outColor: "#FFFFFF",
+          outOpacity: 0.9,
+          mainW: 5,
+          mainColor: "${BROWN}",
+          mainOpacity: 0.7,
+          zIndex: 2
+        };
+
         var styleSelected = {
-          outW: 12,
+          outW: 6,
           outColor: "#FFFFFF",
           outOpacity: 0.98,
-          mainW: 8,
+          mainW: 6,
           mainColor: "${BROWN}",
           mainOpacity: 0.98,
+          zIndex: 3
         };
 
         for (var i = 0; i < routes.length; i++) {
-          var coords = routes[i]?.geometry?.coordinates || [];
+          var coords = routes[i] && routes[i].geometry && routes[i].geometry.coordinates
+            ? routes[i].geometry.coordinates
+            : [];
 
-          // ✅ 점 줄이기 (4~6 사이 취향대로)
-          coords = thinCoords(coords, 4);
+          // ✅ 중요: GeoJSON 원본 좌표 그대로 사용
+          // thinCoords 제거 - 이게 건물 관통처럼 보이게 만드는 주범
 
           var path = [];
           for (var j = 0; j < coords.length; j++) {
             var lng = coords[j][0];
             var lat = coords[j][1];
+
             if (typeof lat === "number" && typeof lng === "number") {
               path.push(new kakao.maps.LatLng(lat, lng));
             }
@@ -170,9 +164,9 @@ const makeHtml = () => `
             continue;
           }
 
-          // 일단 normal 스타일로 만들어두고, 선택 시 selected 스타일로 재생성
           var stroke = makeStroke(path, styleNormal);
           stroke._path = path;
+          stroke._styleDim = styleDim;
           stroke._styleNormal = styleNormal;
           stroke._styleSelected = styleSelected;
 
@@ -187,7 +181,6 @@ const makeHtml = () => `
       }
     };
 
-    // ✅ 특정 코스만 표시
     window.selectRoute = function(idx) {
       try {
         if (!window.kakao || !kakao.maps || !map) return;
@@ -197,19 +190,17 @@ const makeHtml = () => `
           var p = routePolylines[i];
           if (!p) continue;
 
-          // 기존 선 제거
-          try { p.outline?.setMap(null); } catch(e) {}
-          try { p.main?.setMap(null); } catch(e) {}
+          try { p.outline && p.outline.setMap(null); } catch(e) {}
+          try { p.main && p.main.setMap(null); } catch(e) {}
 
-          if (i === idx) {
-            // 선택된 루트: selected 스타일로 재생성해서 표시
-            var stroke = makeStroke(p._path, p._styleSelected);
-            p.outline = stroke.outline;
-            p.main = stroke.main;
+          var style = (i === idx) ? p._styleSelected : p._styleDim;
+          var stroke = makeStroke(p._path, style);
 
-            p.outline.setMap(map);
-            p.main.setMap(map);
-          }
+          p.outline = stroke.outline;
+          p.main = stroke.main;
+
+          p.outline.setMap(map);
+          p.main.setMap(map);
         }
 
         var b = routeBounds[idx];
@@ -264,17 +255,14 @@ export default function RouteSelectScreen({ navigation, route }) {
   );
 
   const [selected, setSelected] = useState("A");
-
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const webviewRef = useRef(null);
 
-//++추가
-  const [recoRoutes, setRecoRoutes] = useState([]); //추천 경로 목록 저장하는 상태
-  const [loadingReco, setLoadingReco] = useState(false); //추천 경로 요청 중인지 여부
+  const [recoRoutes, setRecoRoutes] = useState([]);
+  const [loadingReco, setLoadingReco] = useState(false);
   const [recoError, setRecoError] = useState(null);
 
-  // 1) 현재 위치 가져오기
   useEffect(() => {
     (async () => {
       try {
@@ -305,7 +293,6 @@ export default function RouteSelectScreen({ navigation, route }) {
     })();
   }, []);
 
-  // 2) 지도 준비 + coords 생기면 WebView에 주입해서 내 위치로 이동
   useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
 
@@ -316,7 +303,6 @@ export default function RouteSelectScreen({ navigation, route }) {
     webviewRef.current.injectJavaScript(js);
   }, [coords, mapReady]);
 
-  // 3) ✅coords 생기면 추천 API 호출 (recoRoutes->지도 그리기)
   useEffect(() => {
     if (!coords) return;
 
@@ -356,7 +342,6 @@ export default function RouteSelectScreen({ navigation, route }) {
     })();
   }, [coords, minutes]);
 
-  // 4) 추천 routes 받으면 WebView에 routes 주입
   useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
     if (!Array.isArray(recoRoutes) || recoRoutes.length === 0) return;
@@ -369,7 +354,6 @@ export default function RouteSelectScreen({ navigation, route }) {
     webviewRef.current.injectJavaScript(js);
   }, [recoRoutes, mapReady]);
 
-  // 5) 코스 선택 시 해당 루트 표시
   useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
     if (!Array.isArray(recoRoutes) || recoRoutes.length === 0) return;
@@ -398,12 +382,10 @@ export default function RouteSelectScreen({ navigation, route }) {
           source={{ html: makeHtml(), baseUrl: "https://localhost" }}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
-            // 필요하면 켜기: console.log("[RouteSelect WebView]", msg);
             if (msg === "Map created OK") setMapReady(true);
           }}
         />
 
-        {/* 상단바 */}
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
             <Ionicons name="chevron-back" size={28} color={TEXT} />
@@ -412,7 +394,6 @@ export default function RouteSelectScreen({ navigation, route }) {
           <View style={{ width: 28 }} />
         </View>
 
-        {/* 코스 A/B/C */}
         <View style={styles.courseRow}>
           {chips.map((r) => {
             const on = r.id === selected;
@@ -431,7 +412,6 @@ export default function RouteSelectScreen({ navigation, route }) {
           })}
         </View>
 
-        {/* 추천 에러 표시 */}
         {recoError ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>추천 실패: {recoError}</Text>
@@ -441,7 +421,6 @@ export default function RouteSelectScreen({ navigation, route }) {
           </View>
         ) : null}
 
-        {/* 산책 시작하기 */}
         <Pressable
           style={[styles.startBtn, (loadingReco || !selectedRoute) && { opacity: 0.6 }]}
           disabled={loadingReco || !selectedRoute}
