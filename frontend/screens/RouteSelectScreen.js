@@ -1,6 +1,12 @@
-// frontend/screens/RouteSelectScreen.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Pressable, SafeAreaView, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
@@ -9,10 +15,7 @@ const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
-// ⚠️ GitHub 올리기 전엔 반드시 env로 빼는 게 맞음
-const KAKAO_JS_KEY = "";
-
-// 형님 PC IP
+const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 const API_BASE_URL = "http://192.168.35.235:8080";
 
 const makeHtml = () => `
@@ -20,30 +23,52 @@ const makeHtml = () => `
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
   <style>
-    html, body, #map { margin:0; padding:0; width:100%; height:100%; }
+    html, body, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <script>
-    function send(msg) { window.ReactNativeWebView?.postMessage(String(msg)); }
+    function send(msg) {
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(String(msg));
+    }
 
     var map = null;
     var myMarker = null;
-
-    // [{ outline, main, _path, _styleNormal, _styleSelected, _styleDim }, ...]
+    var markerImage = null;
     var routePolylines = [];
     var routeBounds = [];
+
+    function getDogMarkerImage() {
+      if (!window.kakao || !window.kakao.maps) return null;
+      if (markerImage) return markerImage;
+
+      markerImage = new kakao.maps.MarkerImage(
+        "https://cdn-icons-png.flaticon.com/512/3089/3089423.png",
+        new kakao.maps.Size(60, 60),
+        { offset: new kakao.maps.Point(30, 60) }
+      );
+
+      return markerImage;
+    }
 
     function clearRoutes() {
       for (var i = 0; i < routePolylines.length; i++) {
         var p = routePolylines[i];
         if (!p) continue;
-        try { p.outline && p.outline.setMap(null); } catch(e) {}
-        try { p.main && p.main.setMap(null); } catch(e) {}
+        try { if (p.outline) p.outline.setMap(null); } catch (e) {}
+        try { if (p.main) p.main.setMap(null); } catch (e) {}
       }
       routePolylines = [];
       routeBounds = [];
@@ -51,8 +76,22 @@ const makeHtml = () => `
 
     function buildBounds(path) {
       var bounds = new kakao.maps.LatLngBounds();
-      for (var i = 0; i < path.length; i++) bounds.extend(path[i]);
+      for (var i = 0; i < path.length; i++) {
+        bounds.extend(path[i]);
+      }
       return bounds;
+    }
+
+    function thinCoords(coords, step) {
+      if (!coords || coords.length <= 2) return coords || [];
+      var out = [];
+      for (var i = 0; i < coords.length; i += step) {
+        out.push(coords[i]);
+      }
+      if (coords.length > 0) {
+        out.push(coords[coords.length - 1]);
+      }
+      return out;
     }
 
     function makeStroke(path, opts) {
@@ -62,7 +101,6 @@ const makeHtml = () => `
         strokeColor: opts.outColor,
         strokeOpacity: opts.outOpacity,
         strokeStyle: "solid",
-        zIndex: opts.zIndex || 1,
       });
 
       var main = new kakao.maps.Polyline({
@@ -71,13 +109,73 @@ const makeHtml = () => `
         strokeColor: opts.mainColor,
         strokeOpacity: opts.mainOpacity,
         strokeStyle: "solid",
-        zIndex: (opts.zIndex || 1) + 1,
       });
 
       outline.setMap(null);
       main.setMap(null);
 
-      return { outline, main };
+      return { outline: outline, main: main };
+    }
+
+    function getRouteTheme(index) {
+      var themes = [
+        {
+          normal: {
+            outW: 8,
+            outColor: "#FFFFFF",
+            outOpacity: 0.9,
+            mainW: 5,
+            mainColor: "#E6A5A5", // A: 은은한 빨강
+            mainOpacity: 0.9,
+          },
+          selected: {
+            outW: 10,
+            outColor: "#FFFFFF",
+            outOpacity: 0.95,
+            mainW: 6,
+            mainColor: "#D98C8C",
+            mainOpacity: 0.96,
+          },
+        },
+        {
+          normal: {
+            outW: 8,
+            outColor: "#FFFFFF",
+            outOpacity: 0.9,
+            mainW: 5,
+            mainColor: "#E8D89A", // B: 은은한 노랑
+            mainOpacity: 0.9,
+          },
+          selected: {
+            outW: 10,
+            outColor: "#FFFFFF",
+            outOpacity: 0.95,
+            mainW: 6,
+            mainColor: "#D9C46F",
+            mainOpacity: 0.96,
+          },
+        },
+        {
+          normal: {
+            outW: 8,
+            outColor: "#FFFFFF",
+            outOpacity: 0.9,
+            mainW: 5,
+            mainColor: "#A9D3AD", // C: 은은한 초록
+            mainOpacity: 0.9,
+          },
+          selected: {
+            outW: 10,
+            outColor: "#FFFFFF",
+            outOpacity: 0.95,
+            mainW: 6,
+            mainColor: "#8CBF92",
+            mainOpacity: 0.96,
+          },
+        },
+      ];
+
+      return themes[index] || themes[0];
     }
 
     window.setMyLocation = function(lat, lng) {
@@ -91,12 +189,17 @@ const makeHtml = () => `
         map.setCenter(pos);
 
         if (!myMarker) {
-          myMarker = new kakao.maps.Marker({ position: pos });
+          myMarker = new kakao.maps.Marker({
+            position: pos,
+            image: getDogMarkerImage(),
+          });
           myMarker.setMap(map);
         } else {
           myMarker.setPosition(pos);
         }
-      } catch(e) {
+
+        send("Location applied: " + lat + "," + lng);
+      } catch (e) {
         send("setMyLocation error: " + e.message);
       }
     };
@@ -110,43 +213,16 @@ const makeHtml = () => `
 
         clearRoutes();
 
-        var styleDim = {
-          outW: 4,
-          outColor: "#FFFFFF",
-          outOpacity: 0.75,
-          mainW: 4,
-          mainColor: "${BROWN}",
-          mainOpacity: 0.35,
-          zIndex: 1
-        };
-
-        var styleNormal = {
-          outW: 5,
-          outColor: "#FFFFFF",
-          outOpacity: 0.9,
-          mainW: 5,
-          mainColor: "${BROWN}",
-          mainOpacity: 0.7,
-          zIndex: 2
-        };
-
-        var styleSelected = {
-          outW: 6,
-          outColor: "#FFFFFF",
-          outOpacity: 0.98,
-          mainW: 6,
-          mainColor: "${BROWN}",
-          mainOpacity: 0.98,
-          zIndex: 3
-        };
-
         for (var i = 0; i < routes.length; i++) {
-          var coords = routes[i] && routes[i].geometry && routes[i].geometry.coordinates
-            ? routes[i].geometry.coordinates
-            : [];
+          var coords =
+            routes[i] &&
+            routes[i].geometry &&
+            routes[i].geometry.coordinates
+              ? routes[i].geometry.coordinates
+              : [];
 
-          // ✅ 중요: GeoJSON 원본 좌표 그대로 사용
-          // thinCoords 제거 - 이게 건물 관통처럼 보이게 만드는 주범
+      coords = thinCoords(coords, 1);
+
 
           var path = [];
           for (var j = 0; j < coords.length; j++) {
@@ -164,11 +240,12 @@ const makeHtml = () => `
             continue;
           }
 
-          var stroke = makeStroke(path, styleNormal);
+          var theme = getRouteTheme(i);
+          var stroke = makeStroke(path, theme.normal);
+
           stroke._path = path;
-          stroke._styleDim = styleDim;
-          stroke._styleNormal = styleNormal;
-          stroke._styleSelected = styleSelected;
+          stroke._styleNormal = theme.normal;
+          stroke._styleSelected = theme.selected;
 
           routePolylines.push(stroke);
           routeBounds.push(buildBounds(path));
@@ -176,7 +253,7 @@ const makeHtml = () => `
 
         window.selectRoute(0);
         send("Routes set: " + routes.length);
-      } catch(e) {
+      } catch (e) {
         send("setRoutes error: " + e.message);
       }
     };
@@ -190,22 +267,24 @@ const makeHtml = () => `
           var p = routePolylines[i];
           if (!p) continue;
 
-          try { p.outline && p.outline.setMap(null); } catch(e) {}
-          try { p.main && p.main.setMap(null); } catch(e) {}
+          try { if (p.outline) p.outline.setMap(null); } catch (e) {}
+          try { if (p.main) p.main.setMap(null); } catch (e) {}
 
-          var style = (i === idx) ? p._styleSelected : p._styleDim;
-          var stroke = makeStroke(p._path, style);
+          if (i === idx) {
+            var stroke = makeStroke(p._path, p._styleSelected);
+            p.outline = stroke.outline;
+            p.main = stroke.main;
 
-          p.outline = stroke.outline;
-          p.main = stroke.main;
-
-          p.outline.setMap(map);
-          p.main.setMap(map);
+            p.outline.setMap(map);
+            p.main.setMap(map);
+          }
         }
 
         var b = routeBounds[idx];
-        if (b) map.setBounds(b);
-      } catch(e) {
+        if (b) {
+          map.setBounds(b);
+        }
+      } catch (e) {
         send("selectRoute error: " + e.message);
       }
     };
@@ -217,25 +296,27 @@ const makeHtml = () => `
 
   <script
     src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}"
-    onload="window.ReactNativeWebView?.postMessage('Kakao SDK loaded')"
-    onerror="window.ReactNativeWebView?.postMessage('Kakao SDK load FAILED')"
+    onload="window.ReactNativeWebView && window.ReactNativeWebView.postMessage('Kakao SDK loaded')"
+    onerror="window.ReactNativeWebView && window.ReactNativeWebView.postMessage('Kakao SDK load FAILED')"
   ></script>
 
   <script>
     setTimeout(function() {
       if (!window.kakao || !kakao.maps) {
-        window.ReactNativeWebView?.postMessage("kakao.maps not ready");
+        window.ReactNativeWebView &&
+          window.ReactNativeWebView.postMessage("kakao.maps not ready");
         return;
       }
 
-      var container = document.getElementById('map');
+      var container = document.getElementById("map");
       var options = {
         center: new kakao.maps.LatLng(37.5665, 126.9780),
         level: 4
       };
 
       map = new kakao.maps.Map(container, options);
-      window.ReactNativeWebView?.postMessage("Map created OK");
+      window.ReactNativeWebView &&
+        window.ReactNativeWebView.postMessage("Map created OK");
     }, 200);
   </script>
 </body>
@@ -245,7 +326,7 @@ const makeHtml = () => `
 export default function RouteSelectScreen({ navigation, route }) {
   const minutes = route?.params?.minutes ?? 30;
 
-  const chips = useMemo(
+  const routes = useMemo(
     () => [
       { id: "A", label: "코스 A", idx: 0 },
       { id: "B", label: "코스 B", idx: 1 },
@@ -255,13 +336,14 @@ export default function RouteSelectScreen({ navigation, route }) {
   );
 
   const [selected, setSelected] = useState("A");
+
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
-  const webviewRef = useRef(null);
-
   const [recoRoutes, setRecoRoutes] = useState([]);
   const [loadingReco, setLoadingReco] = useState(false);
   const [recoError, setRecoError] = useState(null);
+
+  const webviewRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -329,7 +411,9 @@ export default function RouteSelectScreen({ navigation, route }) {
         const data = await res.json();
         const list = Array.isArray(data?.routes) ? data.routes : [];
 
-        if (list.length === 0) throw new Error("routes empty");
+        if (list.length === 0) {
+          throw new Error("routes empty");
+        }
 
         setRecoRoutes(list);
         console.log("RECO OK", list.length);
@@ -358,18 +442,29 @@ export default function RouteSelectScreen({ navigation, route }) {
     if (!mapReady || !webviewRef.current) return;
     if (!Array.isArray(recoRoutes) || recoRoutes.length === 0) return;
 
-    const chip = chips.find((c) => c.id === selected);
-    const idx = chip?.idx ?? 0;
+    const selectedIdx = routes.findIndex((r) => r.id === selected);
+    const idx = selectedIdx >= 0 ? selectedIdx : 0;
 
     const js = `
       window.selectRoute(${idx});
       true;
     `;
     webviewRef.current.injectJavaScript(js);
-  }, [selected, mapReady, recoRoutes, chips]);
+  }, [selected, mapReady, recoRoutes, routes]);
 
-  const selectedIdx = chips.find((c) => c.id === selected)?.idx ?? 0;
-  const selectedRoute = recoRoutes?.[selectedIdx];
+  const selectedIdx = routes.findIndex((r) => r.id === selected);
+  const safeSelectedIdx = selectedIdx >= 0 ? selectedIdx : 0;
+  const selectedRoute = recoRoutes?.[safeSelectedIdx];
+
+  const onStartWalk = () => {
+    console.log("START WALK", {
+      selected,
+      minutes,
+      coords,
+      routeId: selectedRoute?.routeId,
+    });
+    navigation.navigate("WalkMap", { selectedRoute });
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -382,70 +477,97 @@ export default function RouteSelectScreen({ navigation, route }) {
           source={{ html: makeHtml(), baseUrl: "https://localhost" }}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
-            if (msg === "Map created OK") setMapReady(true);
+            console.log("[WebView]", msg);
+
+            if (msg === "Map created OK") {
+              setMapReady(true);
+            }
           }}
         />
 
         <View style={styles.header}>
-          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
+          <Pressable
+            style={({ pressed }) => [styles.backBtn, pressed && styles.buttonPressed]}
+            onPress={() => navigation.goBack()}
+            hitSlop={12}
+          >
             <Ionicons name="chevron-back" size={28} color={TEXT} />
           </Pressable>
+
           <Text style={styles.headerTitle}>코스 선택</Text>
+
           <View style={{ width: 28 }} />
         </View>
 
         <View style={styles.courseRow}>
-          {chips.map((r) => {
-            const on = r.id === selected;
-            return (
-              <Pressable
-                key={r.id}
-                style={[styles.courseChip, on && styles.courseChipOn]}
-                onPress={() => setSelected(r.id)}
-                disabled={loadingReco}
-              >
-                <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
-                  {r.label}
+              {routes.map((r) => {
+                const on = r.id === selected;
+
+                return (
+                  <Pressable
+                    key={r.id}
+                    style={({ pressed }) => [
+                      styles.courseChip,
+                      on && styles.courseChipOn,
+                      on && styles.courseChipBorderOn,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={() => setSelected(r.id)}
+                    disabled={loadingReco}
+                  >
+                    <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
+                      {r.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {recoError ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>추천 실패: {recoError}</Text>
+                <Text style={styles.errorTextSmall}>
+                  (API_BASE_URL이 PC IP로 맞는지, 서버 8080이 켜져 있는지 확인)
                 </Text>
-              </Pressable>
-            );
-          })}
+              </View>
+            ) : null}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.startBtn,
+                (loadingReco || !selectedRoute) && styles.startBtnDisabled,
+                pressed && !(loadingReco || !selectedRoute) && styles.buttonPressed,
+              ]}
+              disabled={loadingReco || !selectedRoute}
+              onPress={onStartWalk}
+            >
+              <Text style={styles.startText}>
+                {loadingReco ? "코스 만드는 중..." : "산책 시작하기"}
+              </Text>
+            </Pressable>
+
+        <View style={styles.dots}>
+          <View style={styles.dot} />
+          <View style={[styles.dot, styles.dotActive]} />
         </View>
-
-        {recoError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>추천 실패: {recoError}</Text>
-            <Text style={styles.errorTextSmall}>
-              (API_BASE_URL이 PC IP로 맞는지, 서버(8080) 켜져있는지 확인)
-            </Text>
-          </View>
-        ) : null}
-
-        <Pressable
-          style={[styles.startBtn, (loadingReco || !selectedRoute) && { opacity: 0.6 }]}
-          disabled={loadingReco || !selectedRoute}
-          onPress={() => {
-            console.log("START WALK", {
-              selected,
-              minutes,
-              coords,
-              routeId: selectedRoute?.routeId,
-            });
-
-            // navigation.navigate("WalkScreen", { route: selectedRoute, start: coords, minutes });
-          }}
-        >
-          <Text style={styles.startText}>{loadingReco ? "코스 만드는 중..." : "산책 시작하기"}</Text>
-        </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1 },
-  map: { flex: 1 },
+  safe: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+
+  container: {
+    flex: 1,
+  },
+
+  map: {
+    flex: 1,
+  },
 
   header: {
     position: "absolute",
@@ -459,8 +581,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "rgba(255,255,255,0.85)",
   },
-  backBtn: { padding: 8 },
-  headerTitle: { fontSize: 18, fontWeight: "900", color: TEXT },
+
+  backBtn: {
+    padding: 8,
+  },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: TEXT,
+  },
+
+  buttonPressed: {
+    transform: [{ scale: 0.97 }],
+  },
 
   courseRow: {
     position: "absolute",
@@ -471,6 +605,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+
   courseChip: {
     flex: 1,
     height: 44,
@@ -478,12 +613,34 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: "rgba(0,0,0,0.12)",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
-  courseChipOn: { backgroundColor: COURSE_BROWN, borderColor: COURSE_BROWN },
-  courseChipText: { fontSize: 14, fontWeight: "900", color: TEXT },
-  courseChipTextOn: { color: "#fff" },
+
+  courseChipOn: {
+    backgroundColor: COURSE_BROWN,
+    borderColor: COURSE_BROWN,
+  },
+
+  courseChipBorderOn: {
+    borderWidth: 1.4,
+    borderColor: "#b98954ff",
+  },
+
+  courseChipText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: TEXT,
+  },
+
+  courseChipTextOn: {
+    color: "#fff",
+  },
 
   errorBox: {
     position: "absolute",
@@ -496,8 +653,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,0,0,0.15)",
   },
-  errorText: { color: "#B00020", fontWeight: "900" },
-  errorTextSmall: { marginTop: 6, color: "#B00020", fontSize: 12 },
+
+  errorText: {
+    color: "#B00020",
+    fontWeight: "900",
+  },
+
+  errorTextSmall: {
+    marginTop: 6,
+    color: "#B00020",
+    fontSize: 12,
+  },
 
   startBtn: {
     position: "absolute",
@@ -513,6 +679,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
   },
-  startText: { color: "#fff", fontSize: 18, fontWeight: "900" },
+
+  startBtnDisabled: {
+    opacity: 0.6,
+  },
+
+  startText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  dots: {
+    position: "absolute",
+    bottom: 26,
+    flexDirection: "row",
+    alignSelf: "center",
+  },
+
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.18)",
+    marginHorizontal: 5,
+  },
+
+  dotActive: {
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
 });

@@ -10,20 +10,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
 app.post("/recommend", async (req, res) => {
-  console.log("RECOMMEND HIT", Date.now(), req.body?.minutes);
+  console.log("RECOMMEND HIT", new Date().toISOString(), req.body);
   console.time("RECOMMEND");
 
   try {
     const { start, minutes, userId, bannedRouteIds, count } = req.body ?? {};
 
-    if (!start || !Number.isFinite(Number(start.lat)) || !Number.isFinite(Number(start.lng))) {
+    if (
+      !start ||
+      !Number.isFinite(Number(start.lat)) ||
+      !Number.isFinite(Number(start.lng))
+    ) {
       return res.status(400).json({ error: "start{lat,lng} 필요" });
     }
-    if (!Number.isFinite(Number(minutes))) {
+
+    if (!Number.isFinite(Number(minutes)) || Number(minutes) <= 0) {
       return res.status(400).json({ error: "minutes 필요" });
     }
 
@@ -35,7 +41,9 @@ app.post("/recommend", async (req, res) => {
       : [];
 
     const cRaw = Number(count);
-    const c = Number.isFinite(cRaw) ? Math.max(1, Math.min(3, Math.floor(cRaw))) : 3;
+    const c = Number.isFinite(cRaw)
+      ? Math.max(1, Math.min(3, Math.floor(cRaw)))
+      : 3;
 
     const routes = await recommend3({
       start: {
@@ -48,10 +56,14 @@ app.post("/recommend", async (req, res) => {
       bannedRouteIds: banned,
     });
 
-    return res.json({ routes });
+    return res.json({
+      routes: Array.isArray(routes) ? routes : [],
+    });
   } catch (e) {
     console.error("POST /recommend error:", e);
-    return res.status(500).json({ error: String(e?.stack || e) });
+    return res.status(500).json({
+      error: e?.message || "recommend failed",
+    });
   } finally {
     console.timeEnd("RECOMMEND");
   }
@@ -67,9 +79,16 @@ app.get("/routes/recommend", async (req, res) => {
     const userId = String(req.query.userId ?? "anon");
 
     const cRaw = Number(req.query.count);
-    const c = Number.isFinite(cRaw) ? Math.max(1, Math.min(3, Math.floor(cRaw))) : 3;
+    const c = Number.isFinite(cRaw)
+      ? Math.max(1, Math.min(3, Math.floor(cRaw)))
+      : 3;
 
-    if (!Number.isFinite(time) || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (
+      !Number.isFinite(time) ||
+      time <= 0 ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
       return res.status(400).json({ error: "query로 time, lat, lng 필요" });
     }
 
@@ -81,26 +100,29 @@ app.get("/routes/recommend", async (req, res) => {
       bannedRouteIds: [],
     });
 
-    return res.json({ routes });
+    return res.json({
+      routes: Array.isArray(routes) ? routes : [],
+    });
   } catch (e) {
     console.error("GET /routes/recommend error:", e);
-    return res.status(500).json({ error: String(e?.stack || e) });
+    return res.status(500).json({
+      error: e?.message || "recommend failed",
+    });
   } finally {
     console.timeEnd("RECOMMEND_GET");
   }
 });
 
-// ✅ POI JSON 내려주는 API
+// POI JSON API
 app.get("/pois", (req, res) => {
   try {
     const poisPath = path.join(__dirname, "data", "pois.manual.json");
-    const vetPath  = path.join(__dirname, "data", "veterinary.json");
+    const vetPath = path.join(__dirname, "data", "veterinary.json");
     const restPath = path.join(__dirname, "data", "restaurants.json");
 
     const pois = JSON.parse(fs.readFileSync(poisPath, "utf-8"));
-    const vets = JSON.parse(fs.readFileSync(vetPath,  "utf-8"));
+    const vets = JSON.parse(fs.readFileSync(vetPath, "utf-8"));
     const rests = JSON.parse(fs.readFileSync(restPath, "utf-8"));
-
 
     return res.json([...pois, ...vets, ...rests]);
   } catch (e) {
@@ -112,8 +134,17 @@ app.get("/pois", (req, res) => {
   }
 });
 
-app.get("/health", (_, res) => res.json({ ok: true }));
+app.get("/health", (_, res) => {
+  res.json({
+    ok: true,
+    message: "backend is running",
+    osrmBaseUrl: process.env.OSRM_BASE_URL || "http://localhost:5000",
+    osrmProfile: process.env.OSRM_PROFILE || "foot",
+  });
+});
 
-app.listen(8080, "0.0.0.0", () => {
-  console.log("✅ backend on http://0.0.0.0:8080");
+const PORT = Number(process.env.PORT || 8080);
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ backend on http://0.0.0.0:${PORT}`);
 });

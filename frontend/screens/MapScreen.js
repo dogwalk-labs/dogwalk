@@ -4,7 +4,7 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-const KAKAO_JS_KEY = "";
+const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
 const API_BASE = "http://192.168.35.235:8080";
 

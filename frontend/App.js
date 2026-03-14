@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import MapScreen from "./screens/MapScreen";
 import TimeSelectScreen from "./screens/TimeSelectScreen";
 import RouteSelectScreen from "./screens/RouteSelectScreen";
+import WalkMapScreen from "./screens/WalkMapScreen";
 
 import RankingScreen from "./screens/RankingScreen";
 import CommunityScreen from "./screens/CommunityScreen";
@@ -22,6 +23,7 @@ function WalkStack() {
       <Stack.Screen name="Map" component={MapScreen} />
       <Stack.Screen name="TimeSelect" component={TimeSelectScreen} />
       <Stack.Screen name="RouteSelect" component={RouteSelectScreen} />
+      <Stack.Screen name="WalkMap" component={WalkMapScreen} />
     </Stack.Navigator>
   );
 }
