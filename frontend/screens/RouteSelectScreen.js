@@ -10,7 +10,7 @@ const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 // ⚠️ GitHub 올리기 전엔 반드시 env로 빼는 게 맞음
-const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
+const KAKAO_JS_KEY = "";
 
 // 형님 PC IP
 const API_BASE_URL = "http://192.168.35.235:8080";
