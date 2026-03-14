@@ -5,22 +5,18 @@ import {
   StyleSheet,
   Pressable,
   SafeAreaView,
-  Modal,
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
-import WalkControlBar from "./WalkControlBar";
-import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
-import WalkReviewScreen from "./WalkReviewScreen";
 
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-const API_BASE_URL = "http://172.30.1.92:8080";
+const API_BASE_URL = "http://61.105.51.239:8080";
 
 const makeHtml = () => `
 <!doctype html>
@@ -339,10 +335,6 @@ export default function RouteSelectScreen({ navigation, route }) {
   );
 
   const [selected, setSelected] = useState("A");
-  const [walkStarted, setWalkStarted] = useState(false);
-  const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [showWalkReview, setShowWalkReview] = useState(false);
-  const [lastWalkStats, setLastWalkStats] = useState(null);
 
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -470,7 +462,7 @@ export default function RouteSelectScreen({ navigation, route }) {
       coords,
       routeId: selectedRoute?.routeId,
     });
-    setWalkStarted(true);
+    navigation.navigate("WalkMap", { selectedRoute });
   };
 
   return (
@@ -506,9 +498,7 @@ export default function RouteSelectScreen({ navigation, route }) {
           <View style={{ width: 28 }} />
         </View>
 
-        {!walkStarted && (
-          <>
-            <View style={styles.courseRow}>
+        <View style={styles.courseRow}>
               {routes.map((r) => {
                 const on = r.id === selected;
 
@@ -555,58 +545,10 @@ export default function RouteSelectScreen({ navigation, route }) {
               </Text>
             </Pressable>
 
-            <View style={styles.dots}>
-              <View style={styles.dot} />
-              <View style={[styles.dot, styles.dotActive]} />
-            </View>
-          </>
-        )}
-
-        {walkStarted && (
-          <WalkControlBar
-            onEndWalk={({ elapsedSeconds, distanceKm }) => {
-              setLastWalkStats({ elapsedSeconds, distanceKm });
-              setShowEndConfirm(true);
-            }}
-          />
-        )}
-
-        <Modal
-          visible={showEndConfirm}
-          animationType="slide"
-          onRequestClose={() => setShowEndConfirm(false)}
-        >
-          <EndWalkConfirmScreen
-            onClose={() => setShowEndConfirm(false)}
-            onConfirm={() => {
-              setWalkStarted(false);
-              setShowEndConfirm(false);
-              setShowWalkReview(true);
-            }}
-          />
-        </Modal>
-
-        <Modal
-          visible={showWalkReview}
-          animationType="slide"
-          onRequestClose={() => setShowWalkReview(false)}
-        >
-          <WalkReviewScreen
-            onGoHome={() => {
-              setShowWalkReview(false);
-              setLastWalkStats(null);
-              navigation.popToTop();
-            }}
-            walkTime={
-              lastWalkStats
-                ? `${Math.floor(lastWalkStats.elapsedSeconds / 60)}m ${lastWalkStats.elapsedSeconds % 60}s`
-                : "0m 0s"
-            }
-            walkDistance={
-              lastWalkStats ? `${lastWalkStats.distanceKm.toFixed(1)}km` : "0.0km"
-            }
-          />
-        </Modal>
+        <View style={styles.dots}>
+          <View style={styles.dot} />
+          <View style={[styles.dot, styles.dotActive]} />
+        </View>
       </View>
     </SafeAreaView>
   );
