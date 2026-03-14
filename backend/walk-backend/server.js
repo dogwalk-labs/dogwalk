@@ -93,15 +93,20 @@ app.get("/routes/recommend", async (req, res) => {
 // ✅ POI JSON 내려주는 API
 app.get("/pois", (req, res) => {
   try {
-    const filePath = path.join(__dirname, "data", "pois.manual.json");
-    const raw = fs.readFileSync(filePath, "utf-8");
-    const json = JSON.parse(raw);
+    const poisPath = path.join(__dirname, "data", "pois.manual.json");
+    const vetPath  = path.join(__dirname, "data", "veterinary.json");
+    const restPath = path.join(__dirname, "data", "restaurants.json");
 
-    return res.json(json);
+    const pois = JSON.parse(fs.readFileSync(poisPath, "utf-8"));
+    const vets = JSON.parse(fs.readFileSync(vetPath,  "utf-8"));
+    const rests = JSON.parse(fs.readFileSync(restPath, "utf-8"));
+
+
+    return res.json([...pois, ...vets, ...rests]);
   } catch (e) {
     console.error("GET /pois error:", e);
     return res.status(500).json({
-      error: "pois.manual.json 읽기 실패",
+      error: "pois 읽기 실패",
       detail: String(e?.message || e),
     });
   }
