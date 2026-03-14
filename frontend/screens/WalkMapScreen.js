@@ -13,7 +13,7 @@ import WalkControlBar from "./WalkControlBar";
 import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
 import WalkReviewScreen from "./WalkReviewScreen";
 
-const KAKAO_JS_KEY = "c501500e882a8cc704505df42be58a40";
+const KAKAO_JS_KEY = "..";
 
 const makeHtml = () => `
 <!doctype html>
@@ -137,7 +137,7 @@ const makeHtml = () => `
         furthestPassedIndex = 0;
         if (!route || !route.geometry || !route.geometry.coordinates || route.geometry.coordinates.length < 2) return;
         var raw = route.geometry.coordinates;
-        var coords = thinCoords(raw, 4);
+        var coords = thinCoords(raw, 1);
         for (var i = 0; i < coords.length; i++) {
           var lng = coords[i][0], lat = coords[i][1];
           if (typeof lat === "number" && typeof lng === "number")
@@ -323,11 +323,11 @@ export default function WalkMapScreen({ navigation, route }) {
     webviewRef.current.injectJavaScript(js);
   }, [mapReady, selectedRoute]);
 
-  useEffect(() => {
-    if (!mapReady || !webviewRef.current || !selectedRoute || !coords) return;
-    const js = `window.updateRouteProgress(${coords.latitude}, ${coords.longitude}); true;`;
-    webviewRef.current.injectJavaScript(js);
-  }, [mapReady, selectedRoute, coords]);
+  //useEffect(() => {
+  //  if (!mapReady || !webviewRef.current || !selectedRoute || !coords) return;
+ //   const js = `window.updateRouteProgress(${coords.latitude}, ${coords.longitude}); true;`;
+  //  webviewRef.current.injectJavaScript(js);
+ //}, [mapReady, selectedRoute, coords]);
 
   const onSelectCategory = useCallback((key) => {
     setSelectedCategory((prev) => (prev === key ? null : key));

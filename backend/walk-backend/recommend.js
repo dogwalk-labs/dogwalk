@@ -58,27 +58,22 @@ async function route(coords) {
 /* ---------------- radius ---------------- */
 
 function radiusForMinutes(min) {
-
   if (min <= 30) return 350;
-  if (min <= 45) return 550;
-  return 750;
-
+  if (min <= 60) return 700;
+  return 1050;
 }
 
 /* ---------------- circular loop ---------------- */
 
 async function circularRoute(start, deg, radius, wpCount) {
-
   const wps = [];
 
   const step = 360 / wpCount;
 
   for (let i = 0; i < wpCount; i++) {
-
     wps.push(
       waypoint(start, radius, deg + step * i)
     );
-
   }
 
   const snapped = await Promise.all([
@@ -90,7 +85,7 @@ async function circularRoute(start, deg, radius, wpCount) {
 
   const coords = [
     `${s.lng},${s.lat}`,
-    ...others.map(p => `${p.lng},${p.lat}`),
+    ...others.map((p) => `${p.lng},${p.lat}`),
     `${s.lng},${s.lat}`
   ].join(";");
 
@@ -100,22 +95,19 @@ async function circularRoute(start, deg, radius, wpCount) {
 /* ---------------- main ---------------- */
 
 async function recommend3({ start, minutes, count = 3 }) {
-
   const radius = radiusForMinutes(minutes);
 
   const waypointCount =
     minutes <= 30 ? 3 :
-    minutes <= 45 ? 4 :
-    5;
+    minutes <= 60 ? 4 :
+    6;
 
   const targetSec = minutes * 60;
 
   const candidates = [];
 
   for (let deg = 0; deg < 360; deg += 30) {
-
     try {
-
       const r = await circularRoute(
         start,
         deg,
@@ -132,25 +124,16 @@ async function recommend3({ start, minutes, count = 3 }) {
         Math.abs(duration - targetSec);
 
       candidates.push({
-
         routeId: routeId(r.geometry),
-
         score: diff,
-
         distanceM: dist,
-
         durationSec: duration,
-
         geometry: r.geometry
-
       });
-
     } catch {}
-
   }
 
   if (candidates.length === 0) {
-
     const r = await circularRoute(
       start,
       0,
@@ -166,16 +149,14 @@ async function recommend3({ start, minutes, count = 3 }) {
       durationSec: r.distance / PACE_M_PER_MIN * 60,
       geometry: r.geometry
     }];
-
   }
 
-  candidates.sort((a,b)=>a.score-b.score);
+  candidates.sort((a, b) => a.score - b.score);
 
   const picked = [];
 
   for (const c of candidates) {
-
-    const dup = picked.find(p =>
+    const dup = picked.find((p) =>
       Math.abs(p.distanceM - c.distanceM) < 400
     );
 
@@ -184,35 +165,24 @@ async function recommend3({ start, minutes, count = 3 }) {
     picked.push(c);
 
     if (picked.length >= count) break;
-
   }
 
   for (const c of candidates) {
-
     if (picked.length >= count) break;
 
-    if (!picked.find(p=>p.routeId===c.routeId))
+    if (!picked.find((p) => p.routeId === c.routeId)) {
       picked.push(c);
-
+    }
   }
 
-  return picked.slice(0,count).map((r,i)=>({
-
-    routeId:r.routeId,
-
+  return picked.slice(0, count).map((r, i) => ({
+    routeId: r.routeId,
     minutes,
-
-    title:`${minutes}분 동네 한바퀴 ${i+1}`,
-
-    distanceM:Math.round(r.distanceM),
-
-    durationSec:Math.round(r.durationSec),
-
-    geometry:r.geometry
-
+    title: `${minutes}분 동네 한바퀴 ${i + 1}`,
+    distanceM: Math.round(r.distanceM),
+    durationSec: Math.round(r.durationSec),
+    geometry: r.geometry
   }));
-
-
 }
 
 export { recommend3 };

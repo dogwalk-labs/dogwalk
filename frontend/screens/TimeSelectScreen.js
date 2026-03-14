@@ -8,8 +8,8 @@ export default function TimeSelectScreen({ navigation }) {
   const options = useMemo(
     () => [
       { label: "30분", value: 30 },
-      { label: "45분", value: 45 },
-      { label: "1시간", value: 60 },
+      { label: "60분", value: 60 },
+      { label: "90분", value: 90 },
     ],
     []
   );
@@ -56,10 +56,10 @@ export default function TimeSelectScreen({ navigation }) {
         <View style={styles.pillArea}>
           <View style={styles.row}>
             <TimePill label="30분" value={30} />
-            <TimePill label="45분" value={45} />
+            <TimePill label="60분" value={60} />
           </View>
           <View style={styles.rowCenter}>
-            <TimePill label="1시간" value={60} wide />
+            <TimePill label="90분" value={90} wide />
           </View>
         </View>
 
