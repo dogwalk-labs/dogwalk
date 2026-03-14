@@ -4,16 +4,15 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-const KAKAO_JS_KEY = process.env.REACT_APP_KAKAO_JS_KEY;
+const KAKAO_JS_KEY = "";
 
-// PC 실제 IPv4로 바꿔야 함
-// 예: const API_BASE = "http://192.168.0.15:8080";
 const API_BASE = "http://192.168.35.235:8080";
 
+// ✅ "PET" → "RESTAURANT"로 변경
 const CATEGORY_CONFIG = [
-  { key: "CAFE", label: "☕ 카페", bg: "#F1F1F1", text: "#6B6B6B", bgActive: "#9A9A9A" },
-  { key: "HOSPITAL", label: "🏥 동물 병원", bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
-  { key: "PET", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
+  { key: "CAFE",       label: "☕ 카페",        bg: "#F1F1F1", text: "#6B6B6B", bgActive: "#9A9A9A" },
+  { key: "HOSPITAL",   label: "🏥 동물 병원",   bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
+  { key: "RESTAURANT", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
 ];
 
 const makeHtml = () => `
@@ -152,33 +151,34 @@ function flattenPois(raw) {
   return [];
 }
 
-// normalizePoiCategory: category 필드 값을 그대로 대문자로 정규화
+// ✅ RESTAURANT 포함, PET→CAFE 폴백 정리
 function normalizePoiCategory(raw) {
   const v = String(raw || "").toUpperCase().trim();
-  if (v === "CAFE") return "CAFE";
-  if (v === "HOSPITAL") return "HOSPITAL";
-  if (v === "PET") return "PET";
+  if (v === "CAFE")       return "CAFE";
+  if (v === "HOSPITAL")   return "HOSPITAL";
+  if (v === "RESTAURANT") return "RESTAURANT";
+  // 구버전 PET 키 호환
+  if (v === "PET")        return "RESTAURANT";
 
-  // 혹시 한글/영문 혼용 방어
   const lower = v.toLowerCase();
-  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페")) return "CAFE";
+  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페"))    return "CAFE";
   if (lower.includes("hospital") || lower.includes("vet") || lower.includes("동물병원")) return "HOSPITAL";
-  if (lower.includes("pet") || lower.includes("애견") || lower.includes("식당")) return "PET";
+  if (lower.includes("restaurant") || lower.includes("애견") || lower.includes("식당")) return "RESTAURANT";
 
   return "";
 }
 
-// normalizePoi: category 필드 우선 사용, 없으면 pet:true → "PET" 폴백
+// ✅ 폴백: vet→HOSPITAL, pet→CAFE (pois.manual.json 기존 데이터)
 function normalizePoi(item) {
   const lat = Number(item.lat ?? item.latitude ?? item.y);
   const lng = Number(item.lng ?? item.lon ?? item.longitude ?? item.x);
 
-  const rawCategory =
-    item.category ??
-    item.type ??
-    item.kind ??
-    item.group ??
-    (item.pet === true ? "PET" : "");
+  let rawCategory = item.category ?? item.type ?? item.kind ?? item.group ?? "";
+
+  if (!rawCategory) {
+    if (item.vet === true)      rawCategory = "HOSPITAL";
+    else if (item.pet === true) rawCategory = "CAFE";
+  }
 
   return {
     id: String(item.id ?? `${item.name ?? item.title ?? "poi"}-${lat}-${lng}`),
@@ -189,6 +189,7 @@ function normalizePoi(item) {
     category: normalizePoiCategory(rawCategory),
   };
 }
+
 export default function MapScreen({ navigation }) {
   const webviewRef = useRef(null);
 
@@ -243,16 +244,18 @@ export default function MapScreen({ navigation }) {
         setPoisLoading(true);
 
         const res = await fetch(`${API_BASE}/pois`);
+
+        // ✅ 에러 응답도 JSON으로 파싱해서 detail 확인
         const data = await res.json();
 
         if (!res.ok) {
-          throw new Error(data?.error || "POI 로드 실패");
+          throw new Error(data?.detail || data?.error || "POI 로드 실패");
         }
 
         setPoisRaw(data);
       } catch (err) {
         console.error("POI fetch 실패:", err);
-        setErrorMsg("POI 데이터를 불러오지 못했습니다.");
+        setErrorMsg("POI 데이터를 불러오지 못했습니다: " + String(err?.message ?? err));
       } finally {
         setPoisLoading(false);
       }
@@ -281,19 +284,17 @@ export default function MapScreen({ navigation }) {
     webviewRef.current.injectJavaScript(js);
   }, [coords, mapReady]);
 
- useEffect(() => {
+  useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
 
-    // selectedCategory가 null이면 마커 전부 제거
     const pois = selectedCategory === null ? [] : filteredPois;
 
     const js = `
       window.renderPois(${JSON.stringify(pois)});
       true;
-      `;
-  webviewRef.current.injectJavaScript(js);
-}, [mapReady, filteredPois, selectedCategory]);
-
+    `;
+    webviewRef.current.injectJavaScript(js);
+  }, [mapReady, filteredPois, selectedCategory]);
 
   const onSelectCategory = useCallback((key) => {
     setSelectedCategory((prev) => (prev === key ? null : key));
