@@ -1,18 +1,27 @@
+// frontend/screens/RouteSelectScreen.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, Pressable, SafeAreaView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
-const COURSE_BROWN = "#dbbc93ff"; 
+const COURSE_BROWN = "#dbbc93ff";
 
-// 카카오 JS 키(지금은 베타 코드 그대로 사용)
-const KAKAO_JS_KEY = "c501500e882a8cc704505df42be58a40";
+// ✅ 카카오 JS 키
+const KAKAO_JS_KEY = process.env.REACT_APP_KAKAO_JS_KEY;
 
-// WebView 안에서 실행될 HTML
+// ✅ 형님 PC IP로 바꾸기 (폰 Expo Go면 localhost 절대 X)
+// 예: "http://192.168.0.12:8080"
+const API_BASE_URL = "http://192.168.35.235:8080"; // <- 여기 바꿔!
+
+/**
+ * WebView HTML
+ * - setMyLocation(lat,lng): 내 위치 마커
+ * - setRoutes(routes): routes[0..2] 폴리라인 생성(아웃라인+본선)
+ * - selectRoute(idx): idx 하나만 표시 + bounds 맞춤
+ */
 const makeHtml = () => `
 <!doctype html>
 <html>
@@ -27,10 +36,66 @@ const makeHtml = () => `
   <div id="map"></div>
 
   <script>
-    function send(msg) { window.ReactNativeWebView?.postMessage(msg); }
+    function send(msg) { window.ReactNativeWebView?.postMessage(String(msg)); }
 
     var map = null;
     var myMarker = null;
+
+    // ✅ routePolylines: [{outline, main, _path, _styleNormal, _styleSelected}, ...]
+    var routePolylines = [];
+    var routeBounds = [];
+
+// ++여기부터 추가
+
+    function clearRoutes() {
+      for (var i = 0; i < routePolylines.length; i++) {
+        var p = routePolylines[i];
+        if (!p) continue;
+        try { p.outline?.setMap(null); } catch(e) {}
+        try { p.main?.setMap(null); } catch(e) {}
+      }
+      routePolylines = [];
+      routeBounds = [];
+    }
+
+    function buildBounds(path) {
+      var bounds = new kakao.maps.LatLngBounds();
+      for (var i = 0; i < path.length; i++) bounds.extend(path[i]);
+      return bounds;
+    }
+
+    // ✅ 점 너무 많으면 지저분해져서 줄임 (간단 thinning)
+    function thinCoords(coords, step) {
+      if (!coords || coords.length <= 2) return coords || [];
+      var out = [];
+      for (var i = 0; i < coords.length; i += step) out.push(coords[i]);
+      out.push(coords[coords.length - 1]); // 마지막 점 포함
+      return out;
+    }
+
+    // ✅ 아웃라인+본선 세트 생성
+    function makeStroke(path, opts) {
+      var outline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: opts.outW,
+        strokeColor: opts.outColor,
+        strokeOpacity: opts.outOpacity,
+        strokeStyle: "solid",
+      });
+
+      var main = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: opts.mainW,
+        strokeColor: opts.mainColor,
+        strokeOpacity: opts.mainOpacity,
+        strokeStyle: "solid",
+      });
+
+      outline.setMap(null);
+      main.setMap(null);
+
+      return { outline, main };
+    }
 
     // ✅ RN이 좌표를 주입하면 내 위치로 이동 + 마커 표시
     window.setMyLocation = function(lat, lng) {
@@ -41,21 +106,116 @@ const makeHtml = () => `
         }
 
         var pos = new kakao.maps.LatLng(lat, lng);
+        map.setCenter(pos); //지도 중심 이동
 
-        // 지도 중심 이동
-        map.setCenter(pos);
-
-        // 마커 생성/업데이트
-        if (!myMarker) {
+        if (!myMarker) { //마커 생성/업데이트
           myMarker = new kakao.maps.Marker({ position: pos });
           myMarker.setMap(map);
         } else {
           myMarker.setPosition(pos);
         }
-
-        send("Location applied: " + lat + "," + lng);
       } catch(e) {
         send("setMyLocation error: " + e.message);
+      }
+    };
+
+    // ✅ RN이 routes(GeoJSON coordinates)를 주입하면: 폴리라인 3개 생성
+    // routes: [{ geometry: { coordinates: [[lng,lat], ...] }, ... }, ...]
+    window.setRoutes = function(routes) {
+      try {
+        if (!window.kakao || !kakao.maps || !map) {
+          send("setRoutes called but map not ready");
+          return;
+        }
+        clearRoutes();
+
+        // ++추가 ✅ 산책앱 느낌(브라운+화이트 아웃라인)
+        var styleNormal = {
+          outW: 10,
+          outColor: "#FFFFFF",
+          outOpacity: 0.95,
+          mainW: 7,
+          mainColor: "${BROWN}",
+          mainOpacity: 0.92,
+        };
+
+        // 선택된 루트는 살짝 더 선명/굵게
+        var styleSelected = {
+          outW: 12,
+          outColor: "#FFFFFF",
+          outOpacity: 0.98,
+          mainW: 8,
+          mainColor: "${BROWN}",
+          mainOpacity: 0.98,
+        };
+
+        for (var i = 0; i < routes.length; i++) {
+          var coords = routes[i]?.geometry?.coordinates || [];
+
+          // ✅ 점 줄이기 (4~6 사이 취향대로)
+          coords = thinCoords(coords, 4);
+
+          var path = [];
+          for (var j = 0; j < coords.length; j++) {
+            var lng = coords[j][0];
+            var lat = coords[j][1];
+            if (typeof lat === "number" && typeof lng === "number") {
+              path.push(new kakao.maps.LatLng(lat, lng));
+            }
+          }
+
+          if (path.length < 2) {
+            routePolylines.push(null);
+            routeBounds.push(null);
+            continue;
+          }
+
+          // 일단 normal 스타일로 만들어두고, 선택 시 selected 스타일로 재생성
+          var stroke = makeStroke(path, styleNormal);
+          stroke._path = path;
+          stroke._styleNormal = styleNormal;
+          stroke._styleSelected = styleSelected;
+
+          routePolylines.push(stroke);
+          routeBounds.push(buildBounds(path));
+        }
+
+        window.selectRoute(0);
+        send("Routes set: " + routes.length);
+      } catch(e) {
+        send("setRoutes error: " + e.message);
+      }
+    };
+
+    // ✅ 특정 코스만 표시
+    window.selectRoute = function(idx) {
+      try {
+        if (!window.kakao || !kakao.maps || !map) return;
+        if (!routePolylines.length) return;
+
+        for (var i = 0; i < routePolylines.length; i++) {
+          var p = routePolylines[i];
+          if (!p) continue;
+
+          // 기존 선 제거
+          try { p.outline?.setMap(null); } catch(e) {}
+          try { p.main?.setMap(null); } catch(e) {}
+
+          if (i === idx) {
+            // 선택된 루트: selected 스타일로 재생성해서 표시
+            var stroke = makeStroke(p._path, p._styleSelected);
+            p.outline = stroke.outline;
+            p.main = stroke.main;
+
+            p.outline.setMap(map);
+            p.main.setMap(map);
+          }
+        }
+
+        var b = routeBounds[idx];
+        if (b) map.setBounds(b);
+      } catch(e) {
+        send("selectRoute error: " + e.message);
       }
     };
 
@@ -71,7 +231,6 @@ const makeHtml = () => `
   ></script>
 
   <script>
-    // 지도 초기 생성(일단 서울로) → 곧바로 RN에서 setMyLocation으로 덮어씀
     setTimeout(function() {
       if (!window.kakao || !kakao.maps) {
         window.ReactNativeWebView?.postMessage("kakao.maps not ready");
@@ -95,32 +254,41 @@ const makeHtml = () => `
 export default function RouteSelectScreen({ navigation, route }) {
   const minutes = route?.params?.minutes ?? 30;
 
-  // 코스 A/B/C(지금은 UI용 목업)
-  const routes = useMemo(
+  const chips = useMemo(
     () => [
-      { id: "A", label: "코스 A" },
-      { id: "B", label: "코스 B" },
-      { id: "C", label: "코스 C" },
+      { id: "A", label: "코스 A", idx: 0 },
+      { id: "B", label: "코스 B", idx: 1 },
+      { id: "C", label: "코스 C", idx: 2 },
     ],
     []
   );
 
   const [selected, setSelected] = useState("A");
 
-  // 내 위치
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const webviewRef = useRef(null);
 
-  // 1) 현재 위치 가져오기(한 번만)
+//++추가
+  const [recoRoutes, setRecoRoutes] = useState([]); //추천 경로 목록 저장하는 상태
+  const [loadingReco, setLoadingReco] = useState(false); //추천 경로 요청 중인지 여부
+  const [recoError, setRecoError] = useState(null);
+
+  // 1) 현재 위치 가져오기
   useEffect(() => {
     (async () => {
       try {
         const enabled = await Location.hasServicesEnabledAsync();
-        if (!enabled) return;
+        if (!enabled) {
+          Alert.alert("위치 서비스 꺼짐", "휴대폰 위치 서비스를 켜줘.");
+          return;
+        }
 
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") return;
+        if (status !== "granted") {
+          Alert.alert("권한 필요", "위치 권한을 허용해야 경로 추천이 가능해.");
+          return;
+        }
 
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
@@ -131,8 +299,8 @@ export default function RouteSelectScreen({ navigation, route }) {
           longitude: loc.coords.longitude,
         });
       } catch (e) {
-        // 에러 처리 UI 추가 가능 필요
         console.log("location error:", e?.message ?? e);
+        Alert.alert("위치 오류", "현재 위치를 가져오지 못했어.");
       }
     })();
   }, []);
@@ -145,14 +313,83 @@ export default function RouteSelectScreen({ navigation, route }) {
       window.setMyLocation(${coords.latitude}, ${coords.longitude});
       true;
     `;
-
     webviewRef.current.injectJavaScript(js);
   }, [coords, mapReady]);
+
+  // 3) ✅coords 생기면 추천 API 호출 (recoRoutes->지도 그리기)
+  useEffect(() => {
+    if (!coords) return;
+
+    (async () => {
+      try {
+        setLoadingReco(true);
+        setRecoError(null);
+
+        const res = await fetch(`${API_BASE_URL}/recommend`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start: { lat: coords.latitude, lng: coords.longitude },
+            minutes,
+            bannedRouteIds: [],
+          }),
+        });
+
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`recommend failed: ${res.status} ${t}`);
+        }
+
+        const data = await res.json();
+        const list = Array.isArray(data?.routes) ? data.routes : [];
+
+        if (list.length === 0) throw new Error("routes empty");
+
+        setRecoRoutes(list);
+        console.log("RECO OK", list.length);
+      } catch (e) {
+        console.log("RECO ERROR", e?.message ?? e);
+        setRecoError(e?.message ?? String(e));
+      } finally {
+        setLoadingReco(false);
+      }
+    })();
+  }, [coords, minutes]);
+
+  // 4) 추천 routes 받으면 WebView에 routes 주입
+  useEffect(() => {
+    if (!mapReady || !webviewRef.current) return;
+    if (!Array.isArray(recoRoutes) || recoRoutes.length === 0) return;
+
+    const payload = JSON.stringify(recoRoutes);
+    const js = `
+      window.setRoutes(${payload});
+      true;
+    `;
+    webviewRef.current.injectJavaScript(js);
+  }, [recoRoutes, mapReady]);
+
+  // 5) 코스 선택 시 해당 루트 표시
+  useEffect(() => {
+    if (!mapReady || !webviewRef.current) return;
+    if (!Array.isArray(recoRoutes) || recoRoutes.length === 0) return;
+
+    const chip = chips.find((c) => c.id === selected);
+    const idx = chip?.idx ?? 0;
+
+    const js = `
+      window.selectRoute(${idx});
+      true;
+    `;
+    webviewRef.current.injectJavaScript(js);
+  }, [selected, mapReady, recoRoutes, chips]);
+
+  const selectedIdx = chips.find((c) => c.id === selected)?.idx ?? 0;
+  const selectedRoute = recoRoutes?.[selectedIdx];
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {/*  지도(풀스크린) */}
         <WebView
           ref={webviewRef}
           style={styles.map}
@@ -161,11 +398,8 @@ export default function RouteSelectScreen({ navigation, route }) {
           source={{ html: makeHtml(), baseUrl: "https://localhost" }}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
-            // console.log("[RouteSelect WebView]", msg);
-
-            if (msg === "Map created OK") {
-              setMapReady(true);
-            }
+            // 필요하면 켜기: console.log("[RouteSelect WebView]", msg);
+            if (msg === "Map created OK") setMapReady(true);
           }}
         />
 
@@ -174,22 +408,20 @@ export default function RouteSelectScreen({ navigation, route }) {
           <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
             <Ionicons name="chevron-back" size={28} color={TEXT} />
           </Pressable>
-
           <Text style={styles.headerTitle}>코스 선택</Text>
-
-          
           <View style={{ width: 28 }} />
         </View>
 
-        {/* 코스 A/B/C  */}
+        {/* 코스 A/B/C */}
         <View style={styles.courseRow}>
-          {routes.map((r) => {
+          {chips.map((r) => {
             const on = r.id === selected;
             return (
               <Pressable
                 key={r.id}
                 style={[styles.courseChip, on && styles.courseChipOn]}
                 onPress={() => setSelected(r.id)}
+                disabled={loadingReco}
               >
                 <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
                   {r.label}
@@ -199,14 +431,32 @@ export default function RouteSelectScreen({ navigation, route }) {
           })}
         </View>
 
-        {/* 산책 시작하기 버튼 */}
+        {/* 추천 에러 표시 */}
+        {recoError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>추천 실패: {recoError}</Text>
+            <Text style={styles.errorTextSmall}>
+              (API_BASE_URL이 PC IP로 맞는지, 서버(8080) 켜져있는지 확인)
+            </Text>
+          </View>
+        ) : null}
+
+        {/* 산책 시작하기 */}
         <Pressable
-          style={styles.startBtn}
+          style={[styles.startBtn, (loadingReco || !selectedRoute) && { opacity: 0.6 }]}
+          disabled={loadingReco || !selectedRoute}
           onPress={() => {
-            console.log("START WALK", { selected, minutes, coords });
+            console.log("START WALK", {
+              selected,
+              minutes,
+              coords,
+              routeId: selectedRoute?.routeId,
+            });
+
+            // navigation.navigate("WalkScreen", { route: selectedRoute, start: coords, minutes });
           }}
         >
-          <Text style={styles.startText}>산책 시작하기</Text>
+          <Text style={styles.startText}>{loadingReco ? "코스 만드는 중..." : "산책 시작하기"}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -216,7 +466,6 @@ export default function RouteSelectScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
   container: { flex: 1 },
-
   map: { flex: 1 },
 
   header: {
@@ -232,16 +481,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.85)",
   },
   backBtn: { padding: 8 },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: TEXT,
-  },
+  headerTitle: { fontSize: 18, fontWeight: "900", color: TEXT },
 
-  
   courseRow: {
     position: "absolute",
-    bottom: 150, 
+    bottom: 150,
     left: 18,
     right: 18,
     flexDirection: "row",
@@ -258,19 +502,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.12)",
   },
+  courseChipOn: { backgroundColor: COURSE_BROWN, borderColor: COURSE_BROWN },
+  courseChipText: { fontSize: 14, fontWeight: "900", color: TEXT },
+  courseChipTextOn: { color: "#fff" },
 
- courseChipOn: {
-  backgroundColor: COURSE_BROWN,
-  borderColor: COURSE_BROWN,
-},
-  courseChipText: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: TEXT,
+  errorBox: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    bottom: 230,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,0,0,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,0,0,0.15)",
   },
-  courseChipTextOn: {
-    color: "#fff",
-  },
+  errorText: { color: "#B00020", fontWeight: "900" },
+  errorTextSmall: { marginTop: 6, color: "#B00020", fontSize: 12 },
 
   startBtn: {
     position: "absolute",
@@ -287,9 +535,5 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
-  startText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "900",
-  },
+  startText: { color: "#fff", fontSize: 18, fontWeight: "900" },
 });

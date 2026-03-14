@@ -1,4 +1,5 @@
 services:
+  # 1) 필요할 때만 수동 실행할 전처리 서비스
   osrm-preprocess:
     image: ghcr.io/project-osrm/osrm-backend:latest
     container_name: dogwalk-osrm-preprocess
@@ -11,28 +12,48 @@ services:
       - |
         set -e
         if [ ! -f /data/south-korea.osm.pbf ]; then
-          echo "❌ osrm/data/south-korea.osm.pbf 파일을 넣어주세요."
+          echo "❌ /data/south-korea.osm.pbf 파일이 없습니다."
           exit 1
         fi
+
         echo "==> extract"
         osrm-extract -p /opt/foot.lua /data/south-korea.osm.pbf
+
         echo "==> partition"
         osrm-partition /data/south-korea.osrm
+
         echo "==> customize"
         osrm-customize /data/south-korea.osrm
-        echo "✅ preprocess 완료"
-    restart: "no"
 
+        echo "✅ OSRM preprocess 완료"
+    restart: "no"
+    profiles: ["preprocess"]
+
+  # 2) OSRM 라우팅 서버
   osrm-routed:
     image: ghcr.io/project-osrm/osrm-backend:latest
     container_name: dogwalk-osrm
     working_dir: /data
     volumes:
       - ./osrm/data:/data
-    depends_on:
-      osrm-preprocess:
-        condition: service_completed_successfully
     command: ["osrm-routed", "--algorithm", "mld", "/data/south-korea.osrm"]
     ports:
       - "5000:5000"
+    restart: unless-stopped
+
+  # 3) Node API 서버 (/recommend)
+  api:
+    image: node:20
+    container_name: dogwalk-api
+    working_dir: /app/backend/walk-backend
+    volumes:
+      - ./:/app
+    environment:
+      PORT: 8080
+      OSRM_BASE_URL: http://osrm-routed:5000
+    command: sh -lc "npm install && node server.js"
+    depends_on:
+      - osrm-routed
+    ports:
+      - "8080:8080"
     restart: unless-stopped

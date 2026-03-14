@@ -1,9 +1,20 @@
+//MapScreen.js
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { View, ActivityIndicator, StyleSheet, Text, Pressable, Image } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-const KAKAO_JS_KEY = "c501500e882a8cc704505df42be58a40";
+const KAKAO_JS_KEY = process.env.REACT_APP_KAKAO_JS_KEY;
+
+// PC 실제 IPv4로 바꿔야 함
+// 예: const API_BASE = "http://192.168.0.15:8080";
+const API_BASE = "http://192.168.35.235:8080";
+
+const CATEGORY_CONFIG = [
+  { key: "CAFE", label: "☕ 카페", bg: "#F1F1F1", text: "#6B6B6B", bgActive: "#9A9A9A" },
+  { key: "HOSPITAL", label: "🏥 동물 병원", bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
+  { key: "PET", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
+];
 
 const makeHtml = () => `
 <!doctype html>
@@ -12,7 +23,12 @@ const makeHtml = () => `
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    html, body, #map { margin:0; padding:0; width:100%; height:100%; }
+    html, body, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
@@ -21,23 +37,83 @@ const makeHtml = () => `
   <script>
     var map = null;
     var myMarker = null;
+    var poiMarkers = [];
+    var infoWindows = [];
+
+    function clearPois() {
+      for (var i = 0; i < poiMarkers.length; i++) {
+        poiMarkers[i].setMap(null);
+      }
+      poiMarkers = [];
+
+      for (var j = 0; j < infoWindows.length; j++) {
+        infoWindows[j].close();
+      }
+      infoWindows = [];
+    }
 
     window.setMyLocation = function(lat, lng) {
       try {
         if (!window.kakao || !window.kakao.maps || !map) return;
+
         var pos = new kakao.maps.LatLng(lat, lng);
-        map.setCenter(pos);
+
         if (!myMarker) {
           myMarker = new kakao.maps.Marker({ position: pos });
           myMarker.setMap(map);
+          map.setCenter(pos);
         } else {
           myMarker.setPosition(pos);
         }
-      } catch(e) {}
+      } catch (e) {
+        window.ReactNativeWebView?.postMessage("setMyLocation error: " + e.message);
+      }
+    };
+
+    window.renderPois = function(pois) {
+      try {
+        if (!window.kakao || !window.kakao.maps || !map) return;
+
+        clearPois();
+
+        var list = Array.isArray(pois) ? pois : [];
+        if (list.length === 0) return;
+
+        var bounds = new kakao.maps.LatLngBounds();
+
+        list.forEach(function(p) {
+          if (!Number.isFinite(Number(p.lat)) || !Number.isFinite(Number(p.lng))) return;
+
+          var pos = new kakao.maps.LatLng(Number(p.lat), Number(p.lng));
+          var marker = new kakao.maps.Marker({ position: pos });
+          marker.setMap(map);
+          poiMarkers.push(marker);
+          bounds.extend(pos);
+
+          var content =
+            '<div style="padding:10px;min-width:180px;">' +
+              '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">' + (p.title || "이름 없음") + '</div>' +
+              '<div style="font-size:12px;color:#666;">' + (p.address || "") + '</div>' +
+            '</div>';
+
+          var infowindow = new kakao.maps.InfoWindow({ content: content });
+          infoWindows.push(infowindow);
+
+          kakao.maps.event.addListener(marker, "click", function() {
+            infoWindows.forEach(function(iw) { iw.close(); });
+            infowindow.open(map, marker);
+          });
+        });
+
+        map.setBounds(bounds);
+      } catch (e) {
+        window.ReactNativeWebView?.postMessage("renderPois error: " + e.message);
+      }
     };
   </script>
 
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}"
+  <script
+    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}"
     onload="window.ReactNativeWebView?.postMessage('Kakao SDK loaded')"
     onerror="window.ReactNativeWebView?.postMessage('Kakao SDK load FAILED')">
   </script>
@@ -45,58 +121,83 @@ const makeHtml = () => `
   <script>
     setTimeout(function() {
       if (!window.kakao || !window.kakao.maps) return;
-      var container = document.getElementById('map');
-      var options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 3 };
+
+      var container = document.getElementById("map");
+      var options = {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 3
+      };
+
       map = new kakao.maps.Map(container, options);
       window.ReactNativeWebView?.postMessage("Map created OK");
-    }, 200);
+    }, 300);
   </script>
 </body>
 </html>
 `;
 
-const CATEGORY_CONFIG = [
-  { key: "TOILET", label: "🗑️ 화장실", bg: "#F1F1F1", text: "#6B6B6B", bgActive: "#9A9A9A" },
-  { key: "HOSPITAL", label: "🏥 동물 병원", bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
-  { key: "PET", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
-];
+function flattenPois(raw) {
+  if (Array.isArray(raw)) return raw;
 
-const MOCK_STORES = [
-  {
-    id: "1",
-    title: "멍멍 샐러드 단국대점",
-    rating: 4.7,
-    distanceM: 510,
-    timeText: "도보 7분",
-    img: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1200&q=60",
-  },
-  {
-    id: "2",
-    title: "따뜻한 빵집",
-    rating: 4.4,
-    distanceM: 830,
-    timeText: "도보 11분",
-    img: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=60",
-  },
-  {
-    id: "3",
-    title: "애견 동반 카페",
-    rating: 4.8,
-    distanceM: 1200,
-    timeText: "도보 16분",
-    img: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1200&q=60",
-  },
-];
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw).flatMap(([groupKey, arr]) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map((item) => ({
+        ...item,
+        category: item.category || groupKey,
+      }));
+    });
+  }
 
+  return [];
+}
+
+// normalizePoiCategory: category 필드 값을 그대로 대문자로 정규화
+function normalizePoiCategory(raw) {
+  const v = String(raw || "").toUpperCase().trim();
+  if (v === "CAFE") return "CAFE";
+  if (v === "HOSPITAL") return "HOSPITAL";
+  if (v === "PET") return "PET";
+
+  // 혹시 한글/영문 혼용 방어
+  const lower = v.toLowerCase();
+  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페")) return "CAFE";
+  if (lower.includes("hospital") || lower.includes("vet") || lower.includes("동물병원")) return "HOSPITAL";
+  if (lower.includes("pet") || lower.includes("애견") || lower.includes("식당")) return "PET";
+
+  return "";
+}
+
+// normalizePoi: category 필드 우선 사용, 없으면 pet:true → "PET" 폴백
+function normalizePoi(item) {
+  const lat = Number(item.lat ?? item.latitude ?? item.y);
+  const lng = Number(item.lng ?? item.lon ?? item.longitude ?? item.x);
+
+  const rawCategory =
+    item.category ??
+    item.type ??
+    item.kind ??
+    item.group ??
+    (item.pet === true ? "PET" : "");
+
+  return {
+    id: String(item.id ?? `${item.name ?? item.title ?? "poi"}-${lat}-${lng}`),
+    title: item.title ?? item.name ?? item.place_name ?? "이름 없음",
+    address: item.address ?? item.addr ?? item.address_name ?? item.road_address_name ?? "",
+    lat,
+    lng,
+    category: normalizePoiCategory(rawCategory),
+  };
+}
 export default function MapScreen({ navigation }) {
   const webviewRef = useRef(null);
 
   const [coords, setCoords] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [mapReady, setMapReady] = useState(false);
-
-  const [selectedCategory, setSelectedCategory] = useState("TOILET");
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [poisRaw, setPoisRaw] = useState([]);
+  const [poisLoading, setPoisLoading] = useState(true);
 
   useEffect(() => {
     let subscription = null;
@@ -105,9 +206,10 @@ export default function MapScreen({ navigation }) {
       try {
         const enabled = await Location.hasServicesEnabledAsync();
         if (!enabled) {
-          setErrorMsg("기기의 위치 서비스(GPS)가 꺼져 있어요. 켜고 다시 실행해주세요.!");
+          setErrorMsg("기기의 위치 서비스(GPS)가 꺼져 있어요. 켜고 다시 실행해주세요.");
           return;
         }
+
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           setErrorMsg("위치 권한이 거부되었습니다. (설정에서 허용 필요)");
@@ -115,8 +217,17 @@ export default function MapScreen({ navigation }) {
         }
 
         subscription = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 2 },
-          (loc) => setCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 1000,
+            distanceInterval: 2,
+          },
+          (loc) => {
+            setCoords({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+          }
         );
       } catch (err) {
         setErrorMsg("위치 추적 실패: " + String(err?.message ?? err));
@@ -127,35 +238,66 @@ export default function MapScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
+    const loadPois = async () => {
+      try {
+        setPoisLoading(true);
+
+        const res = await fetch(`${API_BASE}/pois`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "POI 로드 실패");
+        }
+
+        setPoisRaw(data);
+      } catch (err) {
+        console.error("POI fetch 실패:", err);
+        setErrorMsg("POI 데이터를 불러오지 못했습니다.");
+      } finally {
+        setPoisLoading(false);
+      }
+    };
+
+    loadPois();
+  }, []);
+
+  const allPois = useMemo(() => {
+    return flattenPois(poisRaw)
+      .map(normalizePoi)
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category);
+  }, [poisRaw]);
+
+  const filteredPois = useMemo(() => {
+    return allPois.filter((p) => p.category === selectedCategory);
+  }, [allPois, selectedCategory]);
+
+  useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
-    const js = `window.setMyLocation(${coords.latitude}, ${coords.longitude}); true;`;
+
+    const js = `
+      window.setMyLocation(${coords.latitude}, ${coords.longitude});
+      true;
+    `;
     webviewRef.current.injectJavaScript(js);
   }, [coords, mapReady]);
 
+ useEffect(() => {
+    if (!mapReady || !webviewRef.current) return;
+
+    // selectedCategory가 null이면 마커 전부 제거
+    const pois = selectedCategory === null ? [] : filteredPois;
+
+    const js = `
+      window.renderPois(${JSON.stringify(pois)});
+      true;
+      `;
+  webviewRef.current.injectJavaScript(js);
+}, [mapReady, filteredPois, selectedCategory]);
+
+
   const onSelectCategory = useCallback((key) => {
-    setSelectedCategory(key);
-    setPanelOpen(true);
+    setSelectedCategory((prev) => (prev === key ? null : key));
   }, []);
-
-  const closePanel = useCallback(() => {
-    setPanelOpen(false);
-  }, []);
-
-  const activeLabel = useMemo(() => {
-    const found = CATEGORY_CONFIG.find((c) => c.key === selectedCategory);
-    if (!found) return "";
-    return found.label.replace("🗑️ ", "").replace("🏥 ", "").replace("🍔 ", "");
-  }, [selectedCategory]);
-
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <Image source={{ uri: item.img }} style={styles.cardImg} />
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardSub}>
-        ⭐ {item.rating}  •  {item.distanceM}m ({item.timeText})
-      </Text>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -174,16 +316,20 @@ export default function MapScreen({ navigation }) {
           source={{ html: makeHtml(), baseUrl: "https://localhost" }}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
+            console.log("[WebView]", msg);
             if (msg === "Map created OK") setMapReady(true);
           }}
         />
 
-        {!coords && !errorMsg && (
+        {(!coords || poisLoading) && !errorMsg && (
           <View style={styles.overlay}>
             <ActivityIndicator />
-            <Text style={styles.overlayText}>현재 위치 가져오는 중…</Text>
+            <Text style={styles.overlayText}>
+              {!coords ? "현재 위치 가져오는 중…" : "POI 데이터 불러오는 중…"}
+            </Text>
           </View>
         )}
+
         {!!errorMsg && (
           <View style={styles.overlay}>
             <Text style={styles.errorText}>{errorMsg}</Text>
@@ -191,10 +337,10 @@ export default function MapScreen({ navigation }) {
         )}
       </View>
 
-      
-      <View style={[styles.filterRow, panelOpen && { bottom: 320 }]}>
+      <View style={styles.filterRow}>
         {CATEGORY_CONFIG.map((c) => {
           const active = selectedCategory === c.key;
+
           return (
             <Pressable
               key={c.key}
@@ -208,24 +354,6 @@ export default function MapScreen({ navigation }) {
           );
         })}
       </View>
-
-    
-      {panelOpen && (
-        <View style={styles.panel}>
-          <View style={styles.panelHeader}>
-            <Text style={styles.panelHeaderText}>근처 “{activeLabel}”이에요</Text>
-            <Pressable onPress={closePanel} hitSlop={10}>
-              <Text style={styles.closeText}>닫기</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.listContent}>
-            {MOCK_STORES.map((item) => (
-              <View key={item.id}>{renderItem({ item })}</View>
-            ))}
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -248,7 +376,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#d4c3acff",
   },
-  topBarText: { fontSize: 16, fontWeight: "700", color: "#2B2B2B" },
+  topBarText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2B2B2B",
+  },
 
   mapContainer: { flex: 1 },
   webview: { flex: 1 },
@@ -260,7 +392,7 @@ const styles = StyleSheet.create({
     right: 20,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255,255,255,0.9)",
   },
   overlayText: { marginTop: 8 },
   errorText: { color: "crimson" },
@@ -285,65 +417,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
-  chipText: { fontSize: 13, fontWeight: "800" },
-
-  panel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 300,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingTop: 10,
-    zIndex: 30,
-  },
-  panelHeader: {
-    paddingHorizontal: 18,
-    paddingBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  panelHeaderText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#2B2B2B",
-  },
-  closeText: {
+  chipText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#6B6B6B",
-  },
-
-  listContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 24,
-    gap: 14,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  cardImg: {
-    width: "100%",
-    height: 140,
-  },
-  cardTitle: {
-    marginTop: 10,
-    paddingHorizontal: 10,
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#2B2B2B",
-  },
-  cardSub: {
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingBottom: 12,
-    fontSize: 12,
-    color: "#6B6B6B",
-    fontWeight: "600",
   },
 });
