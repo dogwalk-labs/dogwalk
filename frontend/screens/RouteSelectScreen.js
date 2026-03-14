@@ -15,7 +15,7 @@ const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
-const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
+const KAKAO_JS_KEY = "..";
 const API_BASE_URL = "http://192.168.35.235:8080";
 
 const makeHtml = () => `
