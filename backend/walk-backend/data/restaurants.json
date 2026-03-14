@@ -1,0 +1,20 @@
+[
+  {
+    "id": "r-001",
+    "name": "아이러브펫동물병원 신도림점",
+    "lat": 37.50964,
+    "lng": 126.8884633,
+    "address": "구로구",
+    "resto": true,
+    "category": "RESTAURANT"
+  },
+  {
+    "id": "v-002",
+    "name": "신도림동물병원",
+    "lat": 37.5092416,
+    "lng": 126.8877351,
+    "address": "구로구",
+    "resto": true,
+    "category": "RESTAURANT"
+  }
+  ]

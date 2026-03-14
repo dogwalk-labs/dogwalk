@@ -1,0 +1,561 @@
+[
+  {
+    "id": "p-001",
+    "name": "콘피",
+    "lat": 37.5077063,
+    "lng": 126.8870122,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-002",
+    "name": "히어로스터",
+    "lat": 37.5083478,
+    "lng": 126.8847538,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-003",
+    "name": "로스팅데이 신도림점",
+    "lat": 37.5066919,
+    "lng": 126.8839565,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-004",
+    "name": "사사커피LAB",
+    "lat": 37.5063589,
+    "lng": 126.8848155,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-005",
+    "name": "배스킨라빈스 신도림홈플러스",
+    "lat": 37.5097404,
+    "lng": 126.888531,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-006",
+    "name": "카페 라임라빋",
+    "lat": 37.5043343,
+    "lng": 126.8912823,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-007",
+    "name": "매머드 익스프레스 구로거리공원점",
+    "lat": 37.5000692,
+    "lng": 126.889388,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-008",
+    "name": "STILL HAUS",
+    "lat": 37.5085553,
+    "lng": 126.8797508,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-009",
+    "name": "아리스타커피 구로구청점",
+    "lat": 37.496153,
+    "lng": 126.8893585,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-010",
+    "name": "하이퍼커피",
+    "lat": 37.4946463,
+    "lng": 126.8830043,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-011",
+    "name": "비포어커피로스터스 구로디지털단지점",
+    "lat": 37.4863463,
+    "lng": 126.8922204,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-012",
+    "name": "오피카 로스터리",
+    "lat": 37.4860675,
+    "lng": 126.8916115,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-013",
+    "name": "카페 칼리스타 구로본점",
+    "lat": 37.4854641,
+    "lng": 126.894004,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-014",
+    "name": "홍사단물점",
+    "lat": 37.4951358,
+    "lng": 126.8988508,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-015",
+    "name": "방다방로스터스",
+    "lat": 37.4896877,
+    "lng": 126.8765563,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-016",
+    "name": "데이롱카페 구로구일점",
+    "lat": 37.4854641,
+    "lng": 126.894004,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-017",
+    "name": "현빈 옆집 커피",
+    "lat": 37.4927454,
+    "lng": 126.860225,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-018",
+    "name": "개봉다방 무인카페",
+    "lat": 37.4900207,
+    "lng": 126.8572665,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-019",
+    "name": "컨피덴셜",
+    "lat": 37.4878446,
+    "lng": 126.8589161,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-020",
+    "name": "구름 위",
+    "lat": 37.4868103,
+    "lng": 126.8570291,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-021",
+    "name": "피스오브딥",
+    "lat": 37.4872529,
+    "lng": 126.8572008,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-022",
+    "name": "개봉 15길 커피",
+    "lat": 37.4899761,
+    "lng": 126.8544327,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-023",
+    "name": "이름없는가게",
+    "lat": 37.4855886,
+    "lng": 126.8523956,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-024",
+    "name": "모래모아해변 Mmh",
+    "lat": 37.4930204,
+    "lng": 126.8539486,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-025",
+    "name": "카페 수",
+    "lat": 37.4915924,
+    "lng": 126.8400521,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-026",
+    "name": "매머드익스프레스 오류동점",
+    "lat": 37.4894206,
+    "lng": 126.8396028,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-027",
+    "name": "우지커피 오류동점",
+    "lat": 37.4900314,
+    "lng": 126.8377199,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-028",
+    "name": "카페숲",
+    "lat": 37.4884756,
+    "lng": 126.8312826,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-029",
+    "name": "데이롱카페 구로항동점",
+    "lat": 37.477808,
+    "lng": 126.8244644,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-030",
+    "name": "쉘터",
+    "lat": 37.4834826,
+    "lng": 126.8214067,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-031",
+    "name": "알레티아",
+    "lat": 37.491552,
+    "lng": 126.8248694,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-032",
+    "name": "와요커피 궁동점",
+    "lat": 37.4975851,
+    "lng": 126.8301561,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-033",
+    "name": "카페 트리얌 본점",
+    "lat": 37.4951687,
+    "lng": 126.8392796,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-034",
+    "name": "와요커피 개봉점",
+    "lat": 37.5017873,
+    "lng": 126.8488591,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-035",
+    "name": "세븐피트",
+    "lat": 37.4955103,
+    "lng": 126.8408514,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-036",
+    "name": "페이머스 베이커리",
+    "lat": 37.4974606,
+    "lng": 126.8427437,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-037",
+    "name": "노브",
+    "lat": 37.5000142,
+    "lng": 126.8492615,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-038",
+    "name": "밀크컨셉",
+    "lat": 37.5003909,
+    "lng": 126.8513697,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-039",
+    "name": "모눈",
+    "lat": 37.5037375,
+    "lng": 126.8486036,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-040",
+    "name": "베델로즈 피크닉",
+    "lat": 37.5063924,
+    "lng": 126.8558094,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-041",
+    "name": "여기, Cafe",
+    "lat": 37.5051168,
+    "lng": 126.8600989,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-042",
+    "name": "브리즈테이블 고척본점",
+    "lat": 37.5042976,
+    "lng": 126.8612522,
+    "address": "구로구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-043",
+    "name": "카페1953위드오드리",
+    "lat": 37.5119755,
+    "lng": 126.8919997,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-044",
+    "name": "문래 마이스페이스",
+    "lat": 37.5138967,
+    "lng": 126.8921633,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-045",
+    "name": "칼리프하우스",
+    "lat": 37.5146658,
+    "lng": 126.893361,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-046",
+    "name": "러스트 베이커리",
+    "lat": 37.5131914,
+    "lng": 126.8937163,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-047",
+    "name": "유어홈커피",
+    "lat": 37.5132297,
+    "lng": 126.8940429,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-048",
+    "name": "치CHI 카페",
+    "lat": 37.5135105,
+    "lng": 126.8944908,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-049",
+    "name": "로우더 문래",
+    "lat": 37.5136563,
+    "lng": 126.8957381,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-050",
+    "name": "스틸바이트 문래",
+    "lat": 37.5118856,
+    "lng": 126.8944727,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-051",
+    "name": "신성다방",
+    "lat": 37.5117696,
+    "lng": 126.8952063,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-052",
+    "name": "스마스커피",
+    "lat": 37.5145642,
+    "lng": 126.8953865,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-053",
+    "name": "스멜팅커피",
+    "lat": 37.5151865,
+    "lng": 126.8943263,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-054",
+    "name": "문래방구",
+    "lat": 37.5136776,
+    "lng": 126.898123,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-055",
+    "name": "카페 14번가 3호점",
+    "lat": 37.5180294,
+    "lng": 126.9003425,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-056",
+    "name": "카페오가닉 문래로데오점",
+    "lat": 37.5173991,
+    "lng": 126.8958813,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-057",
+    "name": "포엣룸",
+    "lat": 37.5148844,
+    "lng": 126.892654,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-058",
+    "name": "카페 비긴",
+    "lat": 37.5152365,
+    "lng": 126.8914671,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-059",
+    "name": "스멜팅커피 2호점",
+    "lat": 37.5161285,
+    "lng": 126.8897484,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-060",
+    "name": "카페 헤아린",
+    "lat": 37.5194075,
+    "lng": 126.9034206,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-061",
+    "name": "모리",
+    "lat": 37.519199,
+    "lng": 126.9064274,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  },
+  {
+    "id": "p-062",
+    "name": "루데파리베이크하우스",
+    "lat": 37.5188161,
+    "lng": 126.9071811,
+    "address": "영등포구",
+    "pet": true,
+    "category": "CAFE"
+  }
+
+]
