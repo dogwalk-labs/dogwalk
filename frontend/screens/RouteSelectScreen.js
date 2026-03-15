@@ -15,8 +15,11 @@ const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
-const KAKAO_JS_KEY = "..";
-const API_BASE_URL = "http://192.168.35.235:8080";
+const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
+const API_BASE_URL = "http://192.168.35.196:8000";
+
+// 로그인 붙기 전 임시 UUID
+const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 const makeHtml = () => `
 <!doctype html>
@@ -125,7 +128,7 @@ const makeHtml = () => `
             outColor: "#FFFFFF",
             outOpacity: 0.9,
             mainW: 5,
-            mainColor: "#E6A5A5", // A: 은은한 빨강
+            mainColor: "#E6A5A5",
             mainOpacity: 0.9,
           },
           selected: {
@@ -143,7 +146,7 @@ const makeHtml = () => `
             outColor: "#FFFFFF",
             outOpacity: 0.9,
             mainW: 5,
-            mainColor: "#E8D89A", // B: 은은한 노랑
+            mainColor: "#E8D89A",
             mainOpacity: 0.9,
           },
           selected: {
@@ -161,7 +164,7 @@ const makeHtml = () => `
             outColor: "#FFFFFF",
             outOpacity: 0.9,
             mainW: 5,
-            mainColor: "#A9D3AD", // C: 은은한 초록
+            mainColor: "#A9D3AD",
             mainOpacity: 0.9,
           },
           selected: {
@@ -221,8 +224,7 @@ const makeHtml = () => `
               ? routes[i].geometry.coordinates
               : [];
 
-      coords = thinCoords(coords, 1);
-
+          coords = thinCoords(coords, 1);
 
           var path = [];
           for (var j = 0; j < coords.length; j++) {
@@ -393,13 +395,13 @@ export default function RouteSelectScreen({ navigation, route }) {
         setLoadingReco(true);
         setRecoError(null);
 
-        const res = await fetch(`${API_BASE_URL}/recommend`, {
+        const res = await fetch(`${API_BASE_URL}/routes/recommend`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            user_id: TEMP_USER_ID,
             start: { lat: coords.latitude, lng: coords.longitude },
             minutes,
-            bannedRouteIds: [],
           }),
         });
 
@@ -416,7 +418,7 @@ export default function RouteSelectScreen({ navigation, route }) {
         }
 
         setRecoRoutes(list);
-        console.log("RECO OK", list.length);
+        console.log("RECO OK", list.length, list);
       } catch (e) {
         console.log("RECO ERROR", e?.message ?? e);
         setRecoError(e?.message ?? String(e));
@@ -461,9 +463,16 @@ export default function RouteSelectScreen({ navigation, route }) {
       selected,
       minutes,
       coords,
-      routeId: selectedRoute?.routeId,
+      routeId: selectedRoute?.routeId ?? selectedRoute?.pathId,
+      selectedRoute,
     });
-    navigation.navigate("WalkMap", { selectedRoute });
+
+    navigation.navigate("WalkMap", {
+      selectedRoute: {
+        ...selectedRoute,
+        routeId: selectedRoute?.routeId ?? selectedRoute?.pathId,
+      },
+    });
   };
 
   return (
@@ -500,51 +509,51 @@ export default function RouteSelectScreen({ navigation, route }) {
         </View>
 
         <View style={styles.courseRow}>
-              {routes.map((r) => {
-                const on = r.id === selected;
+          {routes.map((r) => {
+            const on = r.id === selected;
 
-                return (
-                  <Pressable
-                    key={r.id}
-                    style={({ pressed }) => [
-                      styles.courseChip,
-                      on && styles.courseChipOn,
-                      on && styles.courseChipBorderOn,
-                      pressed && styles.buttonPressed,
-                    ]}
-                    onPress={() => setSelected(r.id)}
-                    disabled={loadingReco}
-                  >
-                    <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
-                      {r.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {recoError ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>추천 실패: {recoError}</Text>
-                <Text style={styles.errorTextSmall}>
-                  (API_BASE_URL이 PC IP로 맞는지, 서버 8080이 켜져 있는지 확인)
+            return (
+              <Pressable
+                key={r.id}
+                style={({ pressed }) => [
+                  styles.courseChip,
+                  on && styles.courseChipOn,
+                  on && styles.courseChipBorderOn,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => setSelected(r.id)}
+                disabled={loadingReco}
+              >
+                <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
+                  {r.label}
                 </Text>
-              </View>
-            ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.startBtn,
-                (loadingReco || !selectedRoute) && styles.startBtnDisabled,
-                pressed && !(loadingReco || !selectedRoute) && styles.buttonPressed,
-              ]}
-              disabled={loadingReco || !selectedRoute}
-              onPress={onStartWalk}
-            >
-              <Text style={styles.startText}>
-                {loadingReco ? "코스 만드는 중..." : "산책 시작하기"}
-              </Text>
-            </Pressable>
+        {recoError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>추천 실패: {recoError}</Text>
+            <Text style={styles.errorTextSmall}>
+              (FastAPI 8000 포트가 켜져 있는지, /routes/recommend 응답이 오는지 확인)
+            </Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.startBtn,
+            (loadingReco || !selectedRoute) && styles.startBtnDisabled,
+            pressed && !(loadingReco || !selectedRoute) && styles.buttonPressed,
+          ]}
+          disabled={loadingReco || !selectedRoute}
+          onPress={onStartWalk}
+        >
+          <Text style={styles.startText}>
+            {loadingReco ? "코스 만드는 중..." : "산책 시작하기"}
+          </Text>
+        </Pressable>
 
         <View style={styles.dots}>
           <View style={styles.dot} />

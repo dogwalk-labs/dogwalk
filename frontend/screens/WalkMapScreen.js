@@ -13,7 +13,7 @@ import WalkControlBar from "./WalkControlBar";
 import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
 import WalkReviewScreen from "./WalkReviewScreen";
 
-const KAKAO_JS_KEY = "..";
+const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
 
 const makeHtml = () => `
 <!doctype html>
@@ -471,6 +471,8 @@ export default function WalkMapScreen({ navigation, route }) {
               ? `${lastWalkStats.distanceKm.toFixed(1)}km`
               : "0.0km"
           }
+          selectedRoute={selectedRoute}
+          walkStats={lastWalkStats}
         />
       </Modal>
     </View>

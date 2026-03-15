@@ -4,9 +4,9 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-const KAKAO_JS_KEY = "..";
+const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
 
-const API_BASE = "http://192.168.35.235:8080";
+const API_BASE = "http://192.168.35.196:8080";
 
 // ✅ "PET" → "RESTAURANT"로 변경
 const CATEGORY_CONFIG = [

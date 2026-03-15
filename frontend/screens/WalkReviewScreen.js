@@ -13,13 +13,51 @@ import WalkReviewSlide3 from "./WalkReviewSlide3";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-/**
- * 산책 종료 후 리뷰 플로우: 3개 슬라이드 가로 스와이프 + 페이지 인디케이터
- */
+const API_BASE_URL = "http://192.168.35.196:8000";
+const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
+
+
+
+async function saveWalkAndFeedback(selectedRoute, walkStats, value) {
+  try {
+    console.log("API 호출:", `${API_BASE_URL}/paths`);  // ← 추가
+    const pathRes = await fetch(`${API_BASE_URL}/paths`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: TEMP_USER_ID,
+        minutes: selectedRoute?.minutes ?? 30,
+        distance_m: Math.round((walkStats?.distanceKm ?? 0) * 1000) || selectedRoute?.distanceM || 0,
+        duration_sec: walkStats?.elapsedSeconds ?? selectedRoute?.durationSec ?? 0,
+        geometry: selectedRoute?.geometry ?? null,
+      }),
+    });
+    const pathData = await pathRes.json();
+    const pathId = pathData?.pathId;
+    if (!pathId) throw new Error("pathId 없음");
+
+    await fetch(`${API_BASE_URL}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: TEMP_USER_ID,
+        path_id: pathId,
+        value,
+      }),
+    });
+
+    console.log("저장 완료 pathId:", pathId);
+  } catch (e) {
+    console.log("저장 실패:", e?.message ?? e);
+  }
+}
+
 export default function WalkReviewScreen({
   onGoHome,
   walkTime = "30m 12s",
   walkDistance = "1.2km",
+  selectedRoute,   // WalkMapScreen에서 넘겨줄 것
+  walkStats,       // WalkMapScreen에서 넘겨줄 것
 }) {
   const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -43,7 +81,10 @@ export default function WalkReviewScreen({
           contentContainerStyle={styles.scrollContent}
         >
           <WalkReviewSlide1 walkTime={walkTime} walkDistance={walkDistance} />
-          <WalkReviewSlide2 onLike={() => {}} onDislike={() => {}} />
+          <WalkReviewSlide2
+            onLike={() => saveWalkAndFeedback(selectedRoute, walkStats, 1)}
+            onDislike={() => saveWalkAndFeedback(selectedRoute, walkStats, -1)}
+          />
           <WalkReviewSlide3 onGoHome={onGoHome} />
         </ScrollView>
 
@@ -65,16 +106,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-
   container: {
     flex: 1,
     backgroundColor: BG,
   },
-
   scrollContent: {
     backgroundColor: BG,
   },
-
   dots: {
     flexDirection: "row",
     justifyContent: "center",
@@ -83,14 +121,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     backgroundColor: BG,
   },
-
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: "#ccc",
   },
-
   dotActive: {
     backgroundColor: "#2B2B2B",
   },

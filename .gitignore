@@ -22,3 +22,10 @@ osrm/
 
 # Logs
 npm-debug.log*
+
+# 백엔드
+backend/api-python/__pycache__/
+backend/api-python/**/__pycache__/
+backend/api-python/*.pyc
+backend/api-python/.env
+backend/api-python/venv/

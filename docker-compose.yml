@@ -57,3 +57,14 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: dogwalk-db
+    environment:
+     POSTGRES_USER: dogwalk
+     POSTGRES_PASSWORD: dogwalk
+     POSTGRES_DB: dogwalk
+    ports:
+        - "5432:5432"
+    restart: unless-stopped
