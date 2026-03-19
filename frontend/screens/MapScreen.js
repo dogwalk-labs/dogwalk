@@ -1,18 +1,16 @@
-//MapScreen.js
+// MapScreen.js
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
 const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
+const API_BASE = "http://172.20.10.3:8080";
 
-const API_BASE = "http://192.168.35.196:8080";
-
-// ✅ "PET" → "RESTAURANT"로 변경
 const CATEGORY_CONFIG = [
-  { key: "CAFE",       label: "☕ 카페",        bg: "#F1F1F1", text: "#6B6B6B", bgActive: "#9A9A9A" },
-  { key: "HOSPITAL",   label: "🏥 동물 병원",   bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
-  { key: "RESTAURANT", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
+  { key: "CAFE",       label: "☕ 애견동반 카페",           bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
+  { key: "HOSPITAL",   label: "🏥 동물 병원",      bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
+  { key: "RESTAURANT", label: "🍔 애견동반 식당",  bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
 ];
 
 const makeHtml = () => `
@@ -20,7 +18,10 @@ const makeHtml = () => `
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
   <style>
     html, body, #map {
       margin: 0;
@@ -38,6 +39,20 @@ const makeHtml = () => `
     var myMarker = null;
     var poiMarkers = [];
     var infoWindows = [];
+    var markerImage = null;
+
+    function getDogMarkerImage() {
+      if (!window.kakao || !window.kakao.maps) return null;
+      if (markerImage) return markerImage;
+
+      markerImage = new kakao.maps.MarkerImage(
+        "https://cdn-icons-png.flaticon.com/512/3089/3089423.png",
+        new kakao.maps.Size(60, 60),
+        { offset: new kakao.maps.Point(30, 60) }
+      );
+
+      return markerImage;
+    }
 
     function clearPois() {
       for (var i = 0; i < poiMarkers.length; i++) {
@@ -51,16 +66,44 @@ const makeHtml = () => `
       infoWindows = [];
     }
 
+    function createMap() {
+      if (!window.kakao || !window.kakao.maps) {
+        window.ReactNativeWebView?.postMessage("Kakao SDK not ready");
+        return;
+      }
+
+      var container = document.getElementById("map");
+      var options = {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 3
+      };
+
+      map = new kakao.maps.Map(container, options);
+
+      kakao.maps.event.addListener(map, "dragstart", function() {
+        window.ReactNativeWebView?.postMessage("USER_MOVED_MAP");
+      });
+
+      kakao.maps.event.addListener(map, "zoom_start", function() {
+        window.ReactNativeWebView?.postMessage("USER_MOVED_MAP");
+      });
+
+      window.ReactNativeWebView?.postMessage("Map created OK");
+    }
+
     window.setMyLocation = function(lat, lng) {
       try {
         if (!window.kakao || !window.kakao.maps || !map) return;
 
         var pos = new kakao.maps.LatLng(lat, lng);
+        map.setCenter(pos);
 
         if (!myMarker) {
-          myMarker = new kakao.maps.Marker({ position: pos });
+          myMarker = new kakao.maps.Marker({
+            position: pos,
+            image: getDogMarkerImage()
+          });
           myMarker.setMap(map);
-          map.setCenter(pos);
         } else {
           myMarker.setPosition(pos);
         }
@@ -104,6 +147,10 @@ const makeHtml = () => `
           });
         });
 
+        if (myMarker) {
+          bounds.extend(myMarker.getPosition());
+        }
+
         map.setBounds(bounds);
       } catch (e) {
         window.ReactNativeWebView?.postMessage("renderPois error: " + e.message);
@@ -118,18 +165,9 @@ const makeHtml = () => `
   </script>
 
   <script>
-    setTimeout(function() {
-      if (!window.kakao || !window.kakao.maps) return;
-
-      var container = document.getElementById("map");
-      var options = {
-        center: new kakao.maps.LatLng(37.5665, 126.9780),
-        level: 3
-      };
-
-      map = new kakao.maps.Map(container, options);
-      window.ReactNativeWebView?.postMessage("Map created OK");
-    }, 300);
+    window.addEventListener("load", function() {
+      setTimeout(createMap, 300);
+    });
   </script>
 </body>
 </html>
@@ -151,24 +189,31 @@ function flattenPois(raw) {
   return [];
 }
 
-// ✅ RESTAURANT 포함, PET→CAFE 폴백 정리
 function normalizePoiCategory(raw) {
   const v = String(raw || "").toUpperCase().trim();
-  if (v === "CAFE")       return "CAFE";
-  if (v === "HOSPITAL")   return "HOSPITAL";
+
+  if (v === "CAFE") return "CAFE";
+  if (v === "HOSPITAL") return "HOSPITAL";
   if (v === "RESTAURANT") return "RESTAURANT";
-  // 구버전 PET 키 호환
-  if (v === "PET")        return "RESTAURANT";
+  if (v === "PET") return "RESTAURANT";
 
   const lower = v.toLowerCase();
-  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페"))    return "CAFE";
+  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페")) return "CAFE";
   if (lower.includes("hospital") || lower.includes("vet") || lower.includes("동물병원")) return "HOSPITAL";
   if (lower.includes("restaurant") || lower.includes("애견") || lower.includes("식당")) return "RESTAURANT";
 
   return "";
 }
 
-// ✅ 폴백: vet→HOSPITAL, pet→CAFE (pois.manual.json 기존 데이터)
+function normalizeFavorite(item) {
+  return Boolean(
+    item.favorite === true ||
+    item.isFavorite === true ||
+    item.bookmarked === true ||
+    item.liked === true
+  );
+}
+
 function normalizePoi(item) {
   const lat = Number(item.lat ?? item.latitude ?? item.y);
   const lng = Number(item.lng ?? item.lon ?? item.longitude ?? item.x);
@@ -176,7 +221,7 @@ function normalizePoi(item) {
   let rawCategory = item.category ?? item.type ?? item.kind ?? item.group ?? "";
 
   if (!rawCategory) {
-    if (item.vet === true)      rawCategory = "HOSPITAL";
+    if (item.vet === true) rawCategory = "HOSPITAL";
     else if (item.pet === true) rawCategory = "CAFE";
   }
 
@@ -187,6 +232,7 @@ function normalizePoi(item) {
     lat,
     lng,
     category: normalizePoiCategory(rawCategory),
+    favorite: normalizeFavorite(item),
   };
 }
 
@@ -199,6 +245,9 @@ export default function MapScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [poisRaw, setPoisRaw] = useState([]);
   const [poisLoading, setPoisLoading] = useState(true);
+
+  const [isMyLocationActive, setIsMyLocationActive] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
     let subscription = null;
@@ -244,8 +293,6 @@ export default function MapScreen({ navigation }) {
         setPoisLoading(true);
 
         const res = await fetch(`${API_BASE}/pois`);
-
-        // ✅ 에러 응답도 JSON으로 파싱해서 detail 확인
         const data = await res.json();
 
         if (!res.ok) {
@@ -271,8 +318,18 @@ export default function MapScreen({ navigation }) {
   }, [poisRaw]);
 
   const filteredPois = useMemo(() => {
-    return allPois.filter((p) => p.category === selectedCategory);
-  }, [allPois, selectedCategory]);
+    let list = allPois;
+
+    if (selectedCategory !== null) {
+      list = list.filter((p) => p.category === selectedCategory);
+    }
+
+    if (showFavoritesOnly) {
+      list = list.filter((p) => p.favorite);
+    }
+
+    return list;
+  }, [allPois, selectedCategory, showFavoritesOnly]);
 
   useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
@@ -282,28 +339,51 @@ export default function MapScreen({ navigation }) {
       true;
     `;
     webviewRef.current.injectJavaScript(js);
+    setIsMyLocationActive(true);
   }, [coords, mapReady]);
 
   useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
 
-    const pois = selectedCategory === null ? [] : filteredPois;
+    const pois = selectedCategory === null && !showFavoritesOnly ? [] : filteredPois;
 
     const js = `
       window.renderPois(${JSON.stringify(pois)});
       true;
     `;
     webviewRef.current.injectJavaScript(js);
-  }, [mapReady, filteredPois, selectedCategory]);
+  }, [mapReady, filteredPois, selectedCategory, showFavoritesOnly]);
 
   const onSelectCategory = useCallback((key) => {
     setSelectedCategory((prev) => (prev === key ? null : key));
   }, []);
 
+  const moveToCurrentLocation = useCallback(() => {
+    if (!coords || !mapReady || !webviewRef.current) return;
+
+    const js = `
+      window.setMyLocation(${coords.latitude}, ${coords.longitude});
+      true;
+    `;
+    webviewRef.current.injectJavaScript(js);
+    setIsMyLocationActive(true);
+  }, [coords, mapReady]);
+
+  const toggleFavoritesOnly = useCallback(() => {
+    setShowFavoritesOnly((prev) => !prev);
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Pressable style={styles.topBarButton} onPress={() => navigation.navigate("TimeSelect")}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.topBarButton,
+            styles.shadowButton,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={() => navigation.navigate("TimeSelect")}
+        >
           <Text style={styles.topBarText}>산책 갈 시간이다멍! 🐾</Text>
         </Pressable>
       </View>
@@ -314,11 +394,19 @@ export default function MapScreen({ navigation }) {
           style={styles.webview}
           originWhitelist={["*"]}
           javaScriptEnabled
+          domStorageEnabled
           source={{ html: makeHtml(), baseUrl: "https://localhost" }}
           onMessage={(e) => {
             const msg = e.nativeEvent.data;
             console.log("[WebView]", msg);
-            if (msg === "Map created OK") setMapReady(true);
+
+            if (msg === "Map created OK") {
+              setMapReady(true);
+            }
+
+            if (msg === "USER_MOVED_MAP") {
+              setIsMyLocationActive(false);
+            }
           }}
         />
 
@@ -336,6 +424,46 @@ export default function MapScreen({ navigation }) {
             <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         )}
+
+        <View style={styles.floatingButtonGroup}>
+          <View style={styles.floatingButtonItem}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.floatingButton,
+                styles.shadowButton,
+                {
+                  backgroundColor: isMyLocationActive
+                    ? "rgba(220,220,220,0.95)"
+                    : "rgba(255,255,255,0.92)",
+                },
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={moveToCurrentLocation}
+            >
+              <Text style={styles.floatingButtonIcon}>📍</Text>
+            </Pressable>
+            <Text style={styles.floatingButtonLabel}>내 위치</Text>
+          </View>
+
+          <View style={styles.floatingButtonItem}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.floatingButton,
+                styles.shadowButton,
+                {
+                  backgroundColor: showFavoritesOnly
+                    ? "rgba(220,220,220,0.95)"
+                    : "rgba(255,255,255,0.92)",
+                },
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={toggleFavoritesOnly}
+            >
+              <Text style={styles.floatingButtonIcon}>⭐</Text>
+            </Pressable>
+            <Text style={styles.floatingButtonLabel}>즐겨찾기</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.filterRow}>
@@ -345,10 +473,21 @@ export default function MapScreen({ navigation }) {
           return (
             <Pressable
               key={c.key}
-              style={[styles.chip, { backgroundColor: active ? c.bgActive : c.bg }]}
+              style={({ pressed }) => [
+                styles.chip,
+                styles.shadowButton,
+                { backgroundColor: active ? c.bgActive : c.bg },
+                pressed && styles.buttonPressed,
+              ]}
               onPress={() => onSelectCategory(c.key)}
             >
-              <Text style={[styles.chipText, { color: active ? "#FFFFFF" : c.text }]} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: active ? "#FFFFFF" : c.text },
+                ]}
+                numberOfLines={1}
+              >
                 {c.label}
               </Text>
             </Pressable>
@@ -362,6 +501,18 @@ export default function MapScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
+  shadowButton: {
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  buttonPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+
   topBar: {
     position: "absolute",
     top: 80,
@@ -370,7 +521,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   topBarButton: {
-    backgroundColor: "#fbf3ddff",
+    backgroundColor: "rgba(251,243,221,0.96)",
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 18,
@@ -398,6 +549,41 @@ const styles = StyleSheet.create({
   overlayText: { marginTop: 8 },
   errorText: { color: "crimson" },
 
+  floatingButtonGroup: {
+    position: "absolute",
+    right: 18,
+    top: 138,
+    zIndex: 25,
+    gap: 14,
+    alignItems: "center",
+  },
+  floatingButtonItem: {
+    alignItems: "center",
+  },
+  floatingButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.45)",
+  },
+  floatingButtonIcon: {
+    fontSize: 24,
+  },
+  floatingButtonLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#3F3F3F",
+    backgroundColor: "rgba(255,255,255,0.72)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+
   filterRow: {
     position: "absolute",
     bottom: 45,
@@ -409,14 +595,12 @@ const styles = StyleSheet.create({
   },
   chip: {
     flex: 1,
-    height: 40,
-    borderRadius: 18,
+    height: 42,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
   },
   chipText: {
     fontSize: 13,

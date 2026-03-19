@@ -63,7 +63,7 @@ export default function WalkControlBar({ onEndWalk }) {
 const styles = StyleSheet.create({
   walkBar: {
     position: "absolute",
-    bottom: 80,
+    bottom: 110,
     left: 18,
     right: 18,
     flexDirection: "row",

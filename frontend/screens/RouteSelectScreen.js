@@ -16,7 +16,7 @@ const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
-const API_BASE_URL = "http://192.168.35.196:8000";
+const API_BASE_URL = "http://172.20.10.3:8000";
 
 // 로그인 붙기 전 임시 UUID
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";

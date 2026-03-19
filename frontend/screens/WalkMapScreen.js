@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   View,
   ActivityIndicator,
@@ -14,6 +14,13 @@ import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
 import WalkReviewScreen from "./WalkReviewScreen";
 
 const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
+const API_BASE = "http://172.20.10.3:8080";
+
+const CATEGORY_CONFIG = [
+  { key: "CAFE", label: "☕ 애견동반 카페", bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
+  { key: "HOSPITAL", label: "🏥 동물 병원", bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
+  { key: "RESTAURANT", label: "🍔 애견동반 식당", bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
+];
 
 const makeHtml = () => `
 <!doctype html>
@@ -42,12 +49,16 @@ const makeHtml = () => `
     var map = null;
     var myMarker = null;
     var markerImage = null;
+
     var routeOutline = null;
     var routeMain = null;
     var passedOutline = null;
     var passedMain = null;
     var fullPath = [];
     var furthestPassedIndex = 0;
+
+    var poiMarkers = [];
+    var infoWindows = [];
 
     function thinCoords(coords, step) {
       if (!coords || coords.length <= 2) return coords || [];
@@ -68,9 +79,23 @@ const makeHtml = () => `
       } catch (e) {}
     }
 
+    function clearPois() {
+      for (var i = 0; i < poiMarkers.length; i++) {
+        poiMarkers[i].setMap(null);
+      }
+      poiMarkers = [];
+
+      for (var j = 0; j < infoWindows.length; j++) {
+        infoWindows[j].close();
+      }
+      infoWindows = [];
+    }
+
     function drawRoutePath(path) {
       if (!path || path.length < 2) return;
+
       clearRoute();
+
       routeOutline = new kakao.maps.Polyline({
         path: path,
         strokeWeight: 10,
@@ -78,6 +103,7 @@ const makeHtml = () => `
         strokeOpacity: 0.95,
         strokeStyle: "solid"
       });
+
       routeMain = new kakao.maps.Polyline({
         path: path,
         strokeWeight: 6,
@@ -85,12 +111,14 @@ const makeHtml = () => `
         strokeOpacity: 0.96,
         strokeStyle: "solid"
       });
+
       routeOutline.setMap(map);
       routeMain.setMap(map);
     }
 
     function drawRouteWithProgress(passedPath, remainingPath) {
       clearRoute();
+
       if (passedPath && passedPath.length >= 2) {
         passedOutline = new kakao.maps.Polyline({
           path: passedPath,
@@ -99,6 +127,7 @@ const makeHtml = () => `
           strokeOpacity: 0.9,
           strokeStyle: "solid"
         });
+
         passedMain = new kakao.maps.Polyline({
           path: passedPath,
           strokeWeight: 6,
@@ -106,9 +135,11 @@ const makeHtml = () => `
           strokeOpacity: 0.85,
           strokeStyle: "solid"
         });
+
         passedOutline.setMap(map);
         passedMain.setMap(map);
       }
+
       if (remainingPath && remainingPath.length >= 2) {
         routeOutline = new kakao.maps.Polyline({
           path: remainingPath,
@@ -117,6 +148,7 @@ const makeHtml = () => `
           strokeOpacity: 0.95,
           strokeStyle: "solid"
         });
+
         routeMain = new kakao.maps.Polyline({
           path: remainingPath,
           strokeWeight: 6,
@@ -124,6 +156,7 @@ const makeHtml = () => `
           strokeOpacity: 0.96,
           strokeStyle: "solid"
         });
+
         routeOutline.setMap(map);
         routeMain.setMap(map);
       }
@@ -132,18 +165,28 @@ const makeHtml = () => `
     window.setRoute = function(route) {
       try {
         if (!map || !window.kakao || !window.kakao.maps) return;
+
         clearRoute();
         fullPath = [];
         furthestPassedIndex = 0;
-        if (!route || !route.geometry || !route.geometry.coordinates || route.geometry.coordinates.length < 2) return;
+
+        if (!route || !route.geometry || !route.geometry.coordinates || route.geometry.coordinates.length < 2) {
+          return;
+        }
+
         var raw = route.geometry.coordinates;
         var coords = thinCoords(raw, 1);
+
         for (var i = 0; i < coords.length; i++) {
-          var lng = coords[i][0], lat = coords[i][1];
-          if (typeof lat === "number" && typeof lng === "number")
+          var lng = coords[i][0];
+          var lat = coords[i][1];
+          if (typeof lat === "number" && typeof lng === "number") {
             fullPath.push(new kakao.maps.LatLng(lat, lng));
+          }
         }
+
         if (fullPath.length < 2) return;
+
         drawRoutePath(fullPath);
         map.setLevel(2);
       } catch (e) {
@@ -155,17 +198,21 @@ const makeHtml = () => `
       var R = 6371000;
       var dLat = (lat2 - lat1) * Math.PI / 180;
       var dLng = (lng2 - lng1) * Math.PI / 180;
-      var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-        Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
 
     window.updateRouteProgress = function(userLat, userLng) {
       try {
         if (!map || !window.kakao || !window.kakao.maps || fullPath.length < 2) return;
+
         var minDist = Infinity;
         var closestIdx = 0;
+
         for (var i = 0; i < fullPath.length; i++) {
           var p = fullPath[i];
           var d = distMeters(userLat, userLng, p.getLat(), p.getLng());
@@ -174,10 +221,16 @@ const makeHtml = () => `
             closestIdx = i;
           }
         }
+
         if (closestIdx > furthestPassedIndex) furthestPassedIndex = closestIdx;
+
         var passed = fullPath.slice(0, furthestPassedIndex + 1);
         var remaining = fullPath.slice(furthestPassedIndex);
-        drawRouteWithProgress(passed.length >= 2 ? passed : null, remaining.length >= 2 ? remaining : null);
+
+        drawRouteWithProgress(
+          passed.length >= 2 ? passed : null,
+          remaining.length >= 2 ? remaining : null
+        );
       } catch (e) {}
     };
 
@@ -241,6 +294,51 @@ const makeHtml = () => `
       }
     };
 
+    window.renderPois = function(pois) {
+      try {
+        if (!window.kakao || !window.kakao.maps || !map) return;
+
+        clearPois();
+
+        var list = Array.isArray(pois) ? pois : [];
+        if (list.length === 0) return;
+
+        var bounds = new kakao.maps.LatLngBounds();
+
+        list.forEach(function(p) {
+          if (!Number.isFinite(Number(p.lat)) || !Number.isFinite(Number(p.lng))) return;
+
+          var pos = new kakao.maps.LatLng(Number(p.lat), Number(p.lng));
+          var marker = new kakao.maps.Marker({ position: pos });
+          marker.setMap(map);
+          poiMarkers.push(marker);
+          bounds.extend(pos);
+
+          var content =
+            '<div style="padding:10px;min-width:180px;">' +
+              '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">' + (p.title || "이름 없음") + '</div>' +
+              '<div style="font-size:12px;color:#666;">' + (p.address || "") + '</div>' +
+            '</div>';
+
+          var infowindow = new kakao.maps.InfoWindow({ content: content });
+          infoWindows.push(infowindow);
+
+          kakao.maps.event.addListener(marker, "click", function() {
+            infoWindows.forEach(function(iw) { iw.close(); });
+            infowindow.open(map, marker);
+          });
+        });
+
+        if (myMarker) {
+          bounds.extend(myMarker.getPosition());
+        }
+
+        map.setBounds(bounds);
+      } catch (e) {
+        window.ReactNativeWebView?.postMessage("renderPois error: " + e.message);
+      }
+    };
+
     window.addEventListener("load", function() {
       setTimeout(createMap, 300);
     });
@@ -249,11 +347,68 @@ const makeHtml = () => `
 </html>
 `;
 
-const CATEGORY_CONFIG = [
-  { key: "TOILET", label: "🗑️ 쓰레기통", bg: "rgba(241,241,241,0.92)", text: "#6B6B6B", bgActive: "#9A9A9A" },
-  { key: "HOSPITAL", label: "🏥 동물 병원", bg: "rgba(232,246,232,0.92)", text: "#2E8B57", bgActive: "#37A66A" },
-  { key: "PET", label: "🍔 애견동반", bg: "rgba(251,227,230,0.92)", text: "#D4637A", bgActive: "#E06A84" },
-];
+function flattenPois(raw) {
+  if (Array.isArray(raw)) return raw;
+
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw).flatMap(([groupKey, arr]) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map((item) => ({
+        ...item,
+        category: item.category || groupKey,
+      }));
+    });
+  }
+
+  return [];
+}
+
+function normalizePoiCategory(raw) {
+  const v = String(raw || "").toUpperCase().trim();
+
+  if (v === "CAFE") return "CAFE";
+  if (v === "HOSPITAL") return "HOSPITAL";
+  if (v === "RESTAURANT") return "RESTAURANT";
+  if (v === "PET") return "RESTAURANT";
+
+  const lower = v.toLowerCase();
+  if (lower.includes("cafe") || lower.includes("coffee") || lower.includes("카페")) return "CAFE";
+  if (lower.includes("hospital") || lower.includes("vet") || lower.includes("동물병원")) return "HOSPITAL";
+  if (lower.includes("restaurant") || lower.includes("애견") || lower.includes("식당")) return "RESTAURANT";
+
+  return "";
+}
+
+function normalizeFavorite(item) {
+  return Boolean(
+    item.favorite === true ||
+    item.isFavorite === true ||
+    item.bookmarked === true ||
+    item.liked === true
+  );
+}
+
+function normalizePoi(item) {
+  const lat = Number(item.lat ?? item.latitude ?? item.y);
+  const lng = Number(item.lng ?? item.lon ?? item.longitude ?? item.x);
+
+  let rawCategory = item.category ?? item.type ?? item.kind ?? item.group ?? "";
+
+  if (!rawCategory) {
+    if (item.vet === true) rawCategory = "HOSPITAL";
+    else if (item.pet === true) rawCategory = "CAFE";
+  }
+
+  return {
+    id: String(item.id ?? `${item.name ?? item.title ?? "poi"}-${lat}-${lng}`),
+    title: item.title ?? item.name ?? item.place_name ?? "이름 없음",
+    address: item.address ?? item.addr ?? item.address_name ?? item.road_address_name ?? "",
+    lat,
+    lng,
+    category: normalizePoiCategory(rawCategory),
+    favorite: normalizeFavorite(item),
+  };
+}
 
 export default function WalkMapScreen({ navigation, route }) {
   const webviewRef = useRef(null);
@@ -263,9 +418,16 @@ export default function WalkMapScreen({ navigation, route }) {
   const [mapReady, setMapReady] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isMyLocationActive, setIsMyLocationActive] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showWalkReview, setShowWalkReview] = useState(false);
   const [lastWalkStats, setLastWalkStats] = useState(null);
+
+  const [poisRaw, setPoisRaw] = useState([]);
+  const [poisLoading, setPoisLoading] = useState(true);
+
+  const selectedRoute = route?.params?.selectedRoute;
 
   useEffect(() => {
     let subscription = null;
@@ -305,16 +467,61 @@ export default function WalkMapScreen({ navigation, route }) {
     return () => subscription?.remove?.();
   }, []);
 
-  const selectedRoute = route?.params?.selectedRoute;
+  useEffect(() => {
+    const loadPois = async () => {
+      try {
+        setPoisLoading(true);
+
+        const res = await fetch(`${API_BASE}/pois`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.detail || data?.error || "POI 로드 실패");
+        }
+
+        setPoisRaw(data);
+      } catch (err) {
+        console.error("POI fetch 실패:", err);
+        setErrorMsg("POI 데이터를 불러오지 못했습니다: " + String(err?.message ?? err));
+      } finally {
+        setPoisLoading(false);
+      }
+    };
+
+    loadPois();
+  }, []);
+
+  const allPois = useMemo(() => {
+    return flattenPois(poisRaw)
+      .map(normalizePoi)
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category);
+  }, [poisRaw]);
+
+  const filteredPois = useMemo(() => {
+    let list = allPois;
+
+    if (selectedCategory !== null) {
+      list = list.filter((p) => p.category === selectedCategory);
+    }
+
+    if (showFavoritesOnly) {
+      list = list.filter((p) => p.favorite);
+    }
+
+    return list;
+  }, [allPois, selectedCategory, showFavoritesOnly]);
 
   useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
+
     const js = `window.setMyLocation(${coords.latitude}, ${coords.longitude}); true;`;
     webviewRef.current.injectJavaScript(js);
+    setIsMyLocationActive(true);
   }, [coords, mapReady]);
 
   useEffect(() => {
     if (!mapReady || !webviewRef.current || !selectedRoute) return;
+
     const payload = JSON.stringify(selectedRoute);
     const js = `
       try { window.setRoute(${payload}); } catch (e) { void 0; }
@@ -323,11 +530,17 @@ export default function WalkMapScreen({ navigation, route }) {
     webviewRef.current.injectJavaScript(js);
   }, [mapReady, selectedRoute]);
 
-  //useEffect(() => {
-  //  if (!mapReady || !webviewRef.current || !selectedRoute || !coords) return;
- //   const js = `window.updateRouteProgress(${coords.latitude}, ${coords.longitude}); true;`;
-  //  webviewRef.current.injectJavaScript(js);
- //}, [mapReady, selectedRoute, coords]);
+  useEffect(() => {
+    if (!mapReady || !webviewRef.current) return;
+
+    const pois = selectedCategory === null && !showFavoritesOnly ? [] : filteredPois;
+
+    const js = `
+      window.renderPois(${JSON.stringify(pois)});
+      true;
+    `;
+    webviewRef.current.injectJavaScript(js);
+  }, [mapReady, filteredPois, selectedCategory, showFavoritesOnly]);
 
   const onSelectCategory = useCallback((key) => {
     setSelectedCategory((prev) => (prev === key ? null : key));
@@ -335,10 +548,15 @@ export default function WalkMapScreen({ navigation, route }) {
 
   const moveToCurrentLocation = useCallback(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
+
     const js = `window.setMyLocation(${coords.latitude}, ${coords.longitude}); true;`;
     webviewRef.current.injectJavaScript(js);
     setIsMyLocationActive(true);
   }, [coords, mapReady]);
+
+  const toggleFavoritesOnly = useCallback(() => {
+    setShowFavoritesOnly((prev) => !prev);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -363,10 +581,12 @@ export default function WalkMapScreen({ navigation, route }) {
           }}
         />
 
-        {!coords && !errorMsg && (
+        {(!coords || poisLoading) && !errorMsg && (
           <View style={styles.overlay}>
             <ActivityIndicator />
-            <Text style={styles.overlayText}>현재 위치 가져오는 중…</Text>
+            <Text style={styles.overlayText}>
+              {!coords ? "현재 위치 가져오는 중…" : "POI 데이터 불러오는 중…"}
+            </Text>
           </View>
         )}
 
@@ -395,6 +615,25 @@ export default function WalkMapScreen({ navigation, route }) {
             </Pressable>
             <Text style={styles.floatingButtonLabel}>내 위치</Text>
           </View>
+
+          <View style={styles.floatingButtonItem}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.floatingButton,
+                styles.shadowButton,
+                {
+                  backgroundColor: showFavoritesOnly
+                    ? "rgba(220,220,220,0.95)"
+                    : "rgba(255,255,255,0.92)",
+                },
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={toggleFavoritesOnly}
+            >
+              <Text style={styles.floatingButtonIcon}>⭐</Text>
+            </Pressable>
+            <Text style={styles.floatingButtonLabel}>즐겨찾기</Text>
+          </View>
         </View>
       </View>
 
@@ -408,9 +647,7 @@ export default function WalkMapScreen({ navigation, route }) {
               style={({ pressed }) => [
                 styles.chip,
                 styles.shadowButton,
-                {
-                  backgroundColor: active ? c.bgActive : c.bg,
-                },
+                { backgroundColor: active ? c.bgActive : c.bg },
                 pressed && styles.buttonPressed,
               ]}
               onPress={() => onSelectCategory(c.key)}
@@ -499,12 +736,12 @@ const styles = StyleSheet.create({
 
   overlay: {
     position: "absolute",
-    top: 80,
+    top: 170,
     left: 20,
     right: 20,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255,255,255,0.9)",
   },
   overlayText: { marginTop: 8 },
   errorText: { color: "crimson" },
@@ -512,7 +749,7 @@ const styles = StyleSheet.create({
   floatingButtonGroup: {
     position: "absolute",
     right: 18,
-    top: 100,
+    top: 138,
     zIndex: 25,
     gap: 14,
     alignItems: "center",
@@ -546,7 +783,7 @@ const styles = StyleSheet.create({
 
   filterRow: {
     position: "absolute",
-    bottom: 200,
+    bottom: 45,
     left: 20,
     right: 20,
     zIndex: 20,
