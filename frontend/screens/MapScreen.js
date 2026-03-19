@@ -5,7 +5,7 @@ import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
 const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
-const API_BASE = "http://172.20.10.3:8080";
+const API_BASE = "http://192.168.1.19:8080";
 
 const CATEGORY_CONFIG = [
   { key: "CAFE",       label: "☕ 애견동반 카페",           bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },

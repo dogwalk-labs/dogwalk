@@ -9,29 +9,34 @@ import {
 import WalkReviewSlide1 from "./WalkReviewSlide1";
 import WalkReviewSlide2 from "./WalkReviewSlide2";
 import WalkReviewSlide3 from "./WalkReviewSlide3";
+import WalkReviewSlide4 from "./WalkReviewSlide4";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-const API_BASE_URL = "http://172.20.10.3:8000";
+const API_BASE_URL = "http://192.168.1.19:8000";
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
-
-
 
 async function saveWalkAndFeedback(selectedRoute, walkStats, value) {
   try {
-    console.log("API 호출:", `${API_BASE_URL}/paths`);  // ← 추가
+    console.log("API 호출:", `${API_BASE_URL}/paths`);
+
     const pathRes = await fetch(`${API_BASE_URL}/paths`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: TEMP_USER_ID,
         minutes: selectedRoute?.minutes ?? 30,
-        distance_m: Math.round((walkStats?.distanceKm ?? 0) * 1000) || selectedRoute?.distanceM || 0,
-        duration_sec: walkStats?.elapsedSeconds ?? selectedRoute?.durationSec ?? 0,
+        distance_m:
+          Math.round((walkStats?.distanceKm ?? 0) * 1000) ||
+          selectedRoute?.distanceM ||
+          0,
+        duration_sec:
+          walkStats?.elapsedSeconds ?? selectedRoute?.durationSec ?? 0,
         geometry: selectedRoute?.geometry ?? null,
       }),
     });
+
     const pathData = await pathRes.json();
     const pathId = pathData?.pathId;
     if (!pathId) throw new Error("pathId 없음");
@@ -56,8 +61,8 @@ export default function WalkReviewScreen({
   onGoHome,
   walkTime = "30m 12s",
   walkDistance = "1.2km",
-  selectedRoute,   // WalkMapScreen에서 넘겨줄 것
-  walkStats,       // WalkMapScreen에서 넘겨줄 것
+  selectedRoute,
+  walkStats,
 }) {
   const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -80,16 +85,23 @@ export default function WalkReviewScreen({
           scrollEventThrottle={16}
           contentContainerStyle={styles.scrollContent}
         >
-          <WalkReviewSlide1 walkTime={walkTime} walkDistance={walkDistance} />
+          <WalkReviewSlide1
+            walkTime={walkTime}
+            walkDistance={walkDistance}
+          />
+
           <WalkReviewSlide2
             onLike={() => saveWalkAndFeedback(selectedRoute, walkStats, 1)}
             onDislike={() => saveWalkAndFeedback(selectedRoute, walkStats, -1)}
           />
-          <WalkReviewSlide3 onGoHome={onGoHome} />
+
+          <WalkReviewSlide3 />
+
+          <WalkReviewSlide4 onGoHome={onGoHome} />
         </ScrollView>
 
         <View style={styles.dots}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
               style={[styles.dot, i === currentIndex && styles.dotActive]}
