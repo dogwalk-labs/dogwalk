@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
-    get_current_user_id,
     hash_password,
     verify_password,
 )
-from app.schemas.auth import AuthResponse, LoginRequest, MeResponse, SignUpRequest
+from app.schemas.auth import AuthResponse, LoginRequest, SignUpRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -58,7 +57,7 @@ def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         access_token=access_token,
-        user_id=str(row["id"]),
+        id=str(row["id"]),
         email=row["email"],
         nickname=row["nickname"],
     )
@@ -99,35 +98,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         access_token=access_token,
-        user_id=str(user["id"]),
+        id=str(user["id"]),
         email=user["email"],
         nickname=user["nickname"],
     )
 
-
-@router.get("/me", response_model=MeResponse)
-def me(
-    user_id: str = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
-):
-    user = db.execute(
-        text("""
-            SELECT id, email, nickname, provider
-            FROM users
-            WHERE id = :user_id
-        """),
-        {"user_id": user_id},
-    ).mappings().fetchone()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="사용자를 찾을 수 없습니다.",
-        )
-
-    return MeResponse(
-        user_id=str(user["id"]),
-        email=user["email"],
-        nickname=user["nickname"],
-        provider=user["provider"],
-    )

@@ -3,6 +3,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE,
+  password_hash TEXT,
+  nickname TEXT,
+  provider TEXT NOT NULL DEFAULT 'local',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -27,5 +31,3 @@ CREATE TABLE IF NOT EXISTS feedback (
   value SMALLINT NOT NULL CHECK (value IN (1, -1)),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-INSERT INTO users (id) VALUES ('11111111-1111-1111-1111-111111111111') ON CONFLICT (id) DO NOTHING;

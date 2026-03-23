@@ -14,12 +14,12 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user_id: str
+    id: str
     email: Optional[str] = None
     nickname: Optional[str] = None
 
 class MeResponse(BaseModel):
-    user_id: str
+    id: str
     email: Optional[str] = None
     nickname: Optional[str] = None
     provider: str
