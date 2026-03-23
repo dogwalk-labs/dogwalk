@@ -1,40 +1,32 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import CORS_ALLOW_ORIGINS
+from app.api.auth import router as auth_router
+from app.api.feedback import router as feedback_router
+from app.api.paths import router as paths_router
+from app.api.recommend_routes import router as recommend_router
 from app.api.users import router as users_router
+from app.core.config import CORS_ALLOW_ORIGINS
 
-app = FastAPI(title="DogWalk API (DB Ready)")
+app = FastAPI(title="dogwalk api")
 
-allow_origins = [o.strip() for o in CORS_ALLOW_ORIGINS.split(",")] if CORS_ALLOW_ORIGINS else ["*"]
+origins = ["*"] if CORS_ALLOW_ORIGINS == "*" else [x.strip() for x in CORS_ALLOW_ORIGINS.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins if allow_origins != ["*"] else ["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(users_router)
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-from app.api.feedback import router as feedback_router
 app.include_router(feedback_router)
-
-
-from app.api.paths import router as paths_router
 app.include_router(paths_router)
-
-
-from app.api.recommend_routes import router as recommend_router
 app.include_router(recommend_router)
 
-# main.py 맨 아래에 추가
-@app.on_event("startup")
-async def show_routes():
-    for r in app.routes:
-        print(f"ROUTE: {r.path}")
+
+@app.get("/")
+def root():
+    return {"ok": True}

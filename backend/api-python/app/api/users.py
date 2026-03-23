@@ -1,26 +1,34 @@
-﻿from fastapi import APIRouter, Depends
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+
 from app.core.database import get_db
+from app.core.security import get_current_user_id
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.post("")
-def create_user(db: Session = Depends(get_db)):
-    row = db.execute(
-        text("INSERT INTO users DEFAULT VALUES RETURNING id")
-    ).fetchone()
-    db.commit()
-    return {"userId": row[0]}
 
-@router.post("/upsert-temp")
-def upsert_temp_user(db: Session = Depends(get_db)):
-    db.execute(
+@router.get("/me")
+def get_my_user(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    user = db.execute(
         text("""
-            INSERT INTO users (id)
-            VALUES ('11111111-1111-1111-1111-111111111111')
-            ON CONFLICT (id) DO NOTHING
-        """)
-    )
-    db.commit()
-    return {"ok": True}
+            SELECT id, email, nickname, provider, created_at
+            FROM users
+            WHERE id = :user_id
+        """),
+        {"user_id": user_id},
+    ).mappings().fetchone()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    return {
+        "id": str(user["id"]),
+        "email": user["email"],
+        "nickname": user["nickname"],
+        "provider": user["provider"],
+        "created_at": user["created_at"],
+    }

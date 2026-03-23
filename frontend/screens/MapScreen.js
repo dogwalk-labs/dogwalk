@@ -4,11 +4,11 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
-const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
-const API_BASE = "http://192.168.1.19:8080";
+const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
+const API_BASE = "http://192.168.35.60:8080";
 
 const CATEGORY_CONFIG = [
-  { key: "CAFE",       label: "☕ 애견동반 카페",           bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
+  { key: "CAFE",       label: "☕ 애견동반 카페",   bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
   { key: "HOSPITAL",   label: "🏥 동물 병원",      bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
   { key: "RESTAURANT", label: "🍔 애견동반 식당",  bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
 ];

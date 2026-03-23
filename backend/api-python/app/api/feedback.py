@@ -1,54 +1,40 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+
 from app.core.database import get_db
+from app.core.security import get_current_user_id
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
-class FeedbackRequest(BaseModel):
-    user_id: UUID
+
+class CreateFeedbackRequest(BaseModel):
     path_id: UUID
-    value: int  # 1 = like, -1 = dislike
+    value: int
+
 
 @router.post("")
-def create_feedback(req: FeedbackRequest, db: Session = Depends(get_db)):
-    if req.value not in (1, -1):
-        raise HTTPException(status_code=400, detail="value must be 1 or -1")
+def create_feedback(
+    payload: CreateFeedbackRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    if payload.value not in (1, -1):
+        raise HTTPException(status_code=400, detail="value는 1 또는 -1이어야 합니다.")
 
-    # user 존재 확인
-    user = db.execute(
-        text("SELECT 1 FROM users WHERE id = :id"),
-        {"id": str(req.user_id)}
-    ).fetchone()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="user not found")
-
-    # path 존재 확인
-    path = db.execute(
-        text("SELECT 1 FROM paths WHERE id = :id"),
-        {"id": str(req.path_id)}
-    ).fetchone()
-
-    if not path:
-        raise HTTPException(status_code=404, detail="path not found")
-
-    # feedback 저장
-    result = db.execute(
+    db.execute(
         text("""
             INSERT INTO feedback (user_id, path_id, value)
-            VALUES (:uid, :pid, :val)
-            RETURNING id
+            VALUES (:user_id, :path_id, :value)
         """),
         {
-            "uid": str(req.user_id),
-            "pid": str(req.path_id),
-            "val": req.value
-        }
+            "user_id": user_id,
+            "path_id": str(payload.path_id),
+            "value": payload.value,
+        },
     )
-
     db.commit()
-
-    return {"feedbackId": result.fetchone()[0]}
+    return {"ok": True}

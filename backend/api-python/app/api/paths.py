@@ -1,4 +1,4 @@
-﻿from uuid import UUID, uuid4
+﻿from uuid import uuid4
 import json
 
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -7,52 +7,40 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.core.database import get_db
+from app.core.security import get_current_user_id
 
 router = APIRouter(prefix="/paths", tags=["paths"])
 
 
-# =========================================================
-# [수정 1] geometry 입력 모델 추가
-# Node/프론트에서 넘기는 GeoJSON LineString 형태를 받기 위함
-# =========================================================
 class Geometry(BaseModel):
     type: str
     coordinates: list[list[float]]
 
 
 class CreatePathRequest(BaseModel):
-    user_id: UUID
     minutes: int
     distance_m: int
     duration_sec: int
-
-    # =====================================================
-    # [수정 2] geometry 추가
-    # 예: {"type":"LineString","coordinates":[[lng,lat], ...]}
-    # =====================================================
     geometry: Geometry | None = None
-
-    meta: dict | None = None  # optional
+    meta: dict | None = None
 
 
 @router.post("")
-def create_path(req: CreatePathRequest, db: Session = Depends(get_db)):
-    # user 존재 확인
+def create_path(
+    req: CreatePathRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
     user = db.execute(
         text("SELECT 1 FROM users WHERE id = :id"),
-        {"id": str(req.user_id)},
+        {"id": user_id},
     ).fetchone()
+
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
 
     path_id = str(uuid4())
     meta_json = json.dumps(req.meta or {})
-
-    # =========================================================
-    # [수정 3] geometry가 있으면 geom 컬럼에 저장
-    # ST_GeomFromGeoJSON + ST_SetSRID(4326)
-    # geometry 없으면 geom은 NULL
-    # =========================================================
     geometry_json = json.dumps(req.geometry.model_dump()) if req.geometry else None
 
     db.execute(
@@ -82,7 +70,7 @@ def create_path(req: CreatePathRequest, db: Session = Depends(get_db)):
         """),
         {
             "id": path_id,
-            "uid": str(req.user_id),
+            "uid": user_id,
             "min": int(req.minutes),
             "dist": int(req.distance_m),
             "dur": int(req.duration_sec),
@@ -96,9 +84,9 @@ def create_path(req: CreatePathRequest, db: Session = Depends(get_db)):
 
 @router.get("/liked")
 def get_liked_paths(
-    user_id: UUID,
     limit: int = Query(2, ge=1, le=10),
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ):
     rows = db.execute(
         text("""
@@ -116,7 +104,7 @@ def get_liked_paths(
             ORDER BY f.created_at DESC
             LIMIT :limit
         """),
-        {"uid": str(user_id), "limit": limit},
+        {"uid": user_id, "limit": limit},
     ).mappings().all()
 
     return {"paths": rows}

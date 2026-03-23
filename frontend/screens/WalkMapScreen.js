@@ -13,8 +13,8 @@ import WalkControlBar from "./WalkControlBar";
 import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
 import WalkReviewScreen from "./WalkReviewScreen";
 
-const KAKAO_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_JS_KEY;
-const API_BASE = "http://192.168.1.19:8080";
+const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
+const API_BASE = "http://192.168.35.60:8080";
 
 const CATEGORY_CONFIG = [
   { key: "CAFE", label: "☕ 애견동반 카페", bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },

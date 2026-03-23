@@ -14,7 +14,7 @@ import WalkReviewSlide4 from "./WalkReviewSlide4";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-const API_BASE_URL = "http://192.168.1.19:8000";
+const API_BASE_URL = "http://192.168.35.60:8000";
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 async function saveWalkAndFeedback(selectedRoute, walkStats, value) {

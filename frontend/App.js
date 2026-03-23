@@ -30,7 +30,7 @@ function WalkStack() {
 
 export default function App() {
   useEffect(() => {
-    fetch("http://192.168.1.19:8000/users/upsert-temp", { method: "POST" })
+    fetch("http://192.168.35.60:8000/users/upsert-temp", { method: "POST" })
       .catch(() => {});
   }, []);
 
