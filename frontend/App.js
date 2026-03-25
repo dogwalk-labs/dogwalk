@@ -7,6 +7,7 @@ import MapScreen from "./screens/MapScreen";
 import TimeSelectScreen from "./screens/TimeSelectScreen";
 import RouteSelectScreen from "./screens/RouteSelectScreen";
 import WalkMapScreen from "./screens/WalkMapScreen";
+import OnboardingScreen from "./screens/OnboardingScreen";
 
 import RankingScreen from "./screens/RankingScreen";
 import CommunityScreen from "./screens/CommunityScreen";
@@ -16,6 +17,7 @@ import BottomTabBar from "./components/BottomTabBar";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const RootStack = createNativeStackNavigator();
 
 function WalkStack() {
   return (
@@ -28,6 +30,21 @@ function WalkStack() {
   );
 }
 
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{ headerShown: false }}
+      
+      tabBar={(props) => <BottomTabBar {...props} />}
+    >
+      <Tab.Screen name="Ranking" component={RankingScreen} />
+      <Tab.Screen name="Walk" component={WalkStack} />
+      <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     fetch("http://192.168.35.60:8000/users/upsert-temp", { method: "POST" })
@@ -36,16 +53,10 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{ headerShown: false }}
-      
-        tabBar={(props) => <BottomTabBar {...props} />}
-      >
-        <Tab.Screen name="Ranking" component={RankingScreen} />
-        <Tab.Screen name="Walk" component={WalkStack} />
-        <Tab.Screen name="Community" component={CommunityScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
-      </Tab.Navigator>
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+        <RootStack.Screen name="MainTabs" component={MainTabs} />
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }

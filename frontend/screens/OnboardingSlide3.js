@@ -10,12 +10,12 @@ export default function OnboardingSlide3({ onLoginPress, onSignupPress }) {
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <Image
-        source={require("../assets/endScreen_dog.png")}
+        source={require("../assets/onboardingPage_LoginRegister.png")}
         style={styles.icon}
         resizeMode="contain"
       />
       <Text style={styles.title}>멍멍워크 시작하기</Text>
-      <Text style={styles.subtitle}>산책, 이제는 고민 없이</Text>
+      <Text style={styles.subtitle}>산책, 이제는 고민 없이!</Text>
 
       <Pressable
         style={({ pressed }) => [styles.signupButton, pressed && styles.buttonPressed]}
@@ -43,9 +43,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   icon: {
-    width: 220,
-    height: 220,
-    marginBottom: 16,
+    width: 440,
+    height: 440,
+    marginBottom: -20,
   },
   title: {
     textAlign: "center",

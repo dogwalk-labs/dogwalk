@@ -1,21 +1,57 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, ScrollView, Dimensions, Text, Alert } from "react-native";
 import OnboardingSlide1 from "./OnboardingSlide1";
 import OnboardingSlide2 from "./OnboardingSlide2";
 import OnboardingSlide3 from "./OnboardingSlide3";
+import LoginScreen from "./LoginScreen";
+import RegisterScreen from "./RegisterScreen";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-export default function OnboardingScreen() {
+export default function OnboardingScreen({ navigation }) {
   const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeView, setActiveView] = useState("onboarding");
 
   const onScroll = (e) => {
     const x = e.nativeEvent.contentOffset.x;
     const index = Math.round(x / SCREEN_WIDTH);
     if (index !== currentIndex) setCurrentIndex(index);
   };
+
+  useEffect(() => {
+    if (activeView !== "onboarding") return;
+    if (currentIndex !== 2) return;
+    // 회원가입 -> 뒤로가기일 때 3번째 슬라이드로 복귀
+    scrollRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: false });
+  }, [activeView, currentIndex]);
+
+  if (activeView === "login") {
+    return (
+      <LoginScreen
+        onBack={() => setActiveView("onboarding")}
+        onLoginPress={() => navigation.replace("MainTabs")}
+        onSignupPress={() => {
+          setActiveView("register");
+          setCurrentIndex(2);
+        }}
+        onForgotPress={() => Alert.alert("안내", "비밀번호 찾기는 추후 연결 예정이에요.")}
+      />
+    );
+  }
+
+  if (activeView === "register") {
+    return (
+      <RegisterScreen
+        onBack={() => {
+          setActiveView("onboarding");
+          setCurrentIndex(2);
+        }}
+        onSignupPress={() => setActiveView("login")}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -31,8 +67,8 @@ export default function OnboardingScreen() {
         <OnboardingSlide1 />
         <OnboardingSlide2 />
         <OnboardingSlide3
-          onSignupPress={() => Alert.alert("안내", "회원가입 화면은 추후 연결 예정이에요.")}
-          onLoginPress={() => Alert.alert("안내", "로그인 화면은 추후 연결 예정이에요.")}
+          onSignupPress={() => setActiveView("register")}
+          onLoginPress={() => setActiveView("login")}
         />
       </ScrollView>
 

@@ -9,7 +9,7 @@ export default function OnboardingSlide1() {
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <Image
-        source={require("../assets/endScreen_dog.png")}
+        source={require("../assets/onboardingPage_dog.png")}
         style={styles.icon}
         resizeMode="contain"
       />
@@ -27,14 +27,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   icon: {
-    width: 170,
-    height: 170,
-    marginBottom: 24,
+    width: 260,
+    height: 360,
+    marginBottom: -10,
   },
   title: {
     textAlign: "center",
     color: TEXT,
-    fontSize: 42,
+    fontSize: 32,
     lineHeight: 56,
     fontWeight: "900",
   },
