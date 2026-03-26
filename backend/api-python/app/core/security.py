@@ -14,10 +14,32 @@ bearer_scheme = HTTPBearer()
 
 
 def hash_password(password: str) -> str:
+    if password is None:
+        raise ValueError("password is None")
+
+    password = str(password).strip()
+
+    print("=== hash_password debug start ===")
+    print("hash input repr =", repr(password))
+    print("hash input len =", len(password))
+    print("hash input type =", type(password))
+    print("=== hash_password debug end ===")
+
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if plain_password is None:
+        return False
+
+    plain_password = str(plain_password).strip()
+
+    print("=== verify_password debug start ===")
+    print("verify input repr =", repr(plain_password))
+    print("verify input len =", len(plain_password))
+    print("verify input type =", type(plain_password))
+    print("=== verify_password debug end ===")
+
     return pwd_context.verify(plain_password, hashed_password)
 
 
@@ -56,4 +78,4 @@ def get_current_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 토큰입니다.",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        )   

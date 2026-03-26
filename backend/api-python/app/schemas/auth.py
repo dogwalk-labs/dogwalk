@@ -3,8 +3,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 class SignUpRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=4)
-    password_confirm: str = Field(min_length=4)
+    password: str = Field(min_length=8)
+    password_confirm: str = Field(min_length=8)
     nickname: Optional[str] = None
 
 class LoginRequest(BaseModel):

@@ -17,6 +17,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
     email = payload.email.strip().lower()
 
+    print("=== signup debug start ===")
+    print("payload =", payload)
+    print("email repr =", repr(payload.email))
+    print("password repr =", repr(payload.password))
+    print("password len =", len(payload.password))
+    print("password type =", type(payload.password))
+    print("password_confirm repr =", repr(payload.password_confirm))
+    print("password_confirm len =", len(payload.password_confirm))
+    print("password_confirm type =", type(payload.password_confirm))
+    print("nickname repr =", repr(payload.nickname))
+    print("=== signup debug end ===")
+
     if payload.password != payload.password_confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -38,6 +50,8 @@ def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
             detail="이미 가입된 이메일입니다.",
         )
 
+    hashed_password = hash_password(payload.password)
+
     row = db.execute(
         text("""
             INSERT INTO users (email, password_hash, nickname, provider)
@@ -46,7 +60,7 @@ def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
         """),
         {
             "email": email,
-            "password_hash": hash_password(payload.password),
+            "password_hash": hashed_password,
             "nickname": payload.nickname,
         },
     ).mappings().fetchone()
@@ -66,6 +80,13 @@ def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     email = payload.email.strip().lower()
+
+    print("=== login debug start ===")
+    print("email repr =", repr(payload.email))
+    print("password repr =", repr(payload.password))
+    print("password len =", len(payload.password))
+    print("password type =", type(payload.password))
+    print("=== login debug end ===")
 
     user = db.execute(
         text("""
@@ -102,4 +123,3 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         email=user["email"],
         nickname=user["nickname"],
     )
-
