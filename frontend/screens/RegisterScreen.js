@@ -10,14 +10,23 @@ import {
   SafeAreaView,
   Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const BG = "#FBF3DD";
 const TEXT = "#2B2B2B";
 const BROWN = "#B08B5A";
+const SUBTEXT = "#8D867C";
+const BORDER = "rgba(84, 50, 208, 0.12)";
 
 function CheckboxRow({ label, checked, onToggle }) {
   return (
-    <Pressable style={styles.checkboxRow} onPress={onToggle}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.checkboxRow,
+        pressed && styles.checkboxRowPressed,
+      ]}
+      onPress={onToggle}
+    >
       <View style={[styles.checkboxBox, checked && styles.checkboxBoxOn]}>
         {checked ? <Text style={styles.checkboxCheck}>✓</Text> : null}
       </View>
@@ -64,8 +73,9 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
                 pressed && styles.backBtnPressed,
               ]}
               onPress={onBack}
+              hitSlop={12}
             >
-              <Text style={styles.backText}>←</Text>
+              <Ionicons name="chevron-back" size={28} color={TEXT} />
             </Pressable>
 
             <Text style={styles.headerTitle}>회원 가입</Text>
@@ -74,14 +84,18 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
           </View>
 
           <View style={styles.content}>
-            <Image
-              source={require("../assets/registerPage_image.png")}
-              style={styles.icon}
-              resizeMode="contain"
-            />
+            <View style={styles.hero}>
+              <Image
+                source={require("../assets/registerPage_image.png")}
+                style={styles.icon}
+                resizeMode="contain"
+              />
+            </View>
+
+            <Text style={styles.title}>멍멍워크와 함께{"\n"}산책을 시작해볼까요?</Text>
 
             <Text style={styles.subtitle}>
-              반려동물과의 산책을 {"\n"} 더 편하게 만들어드릴께요
+              반려동물과의 산책을{"\n"}더 편하게 만들어드릴게요
             </Text>
 
             <View style={styles.form}>
@@ -158,16 +172,27 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  safeArea: { flex: 1, backgroundColor: BG },
-  containerInner: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
+  containerInner: {
+    flex: 1,
+    backgroundColor: BG,
+  },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingTop: 0,
+    paddingHorizontal: 10,
+    paddingTop: 4,
     paddingBottom: 8,
   },
 
@@ -178,18 +203,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backBtnPressed: { transform: [{ scale: 0.96 }] },
-  backText: {
-    fontSize: 26,
-    fontWeight: "900",
-    color: "#777",
-  },
 
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingHorizontal: 22,
+  backBtnPressed: {
+    transform: [{ scale: 0.96 }],
+    opacity: 0.92,
   },
 
   headerTitle: {
@@ -198,8 +215,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "900",
     color: TEXT,
-    marginRight: 44, // back + spacer 폭 보정(시각적 중앙)
-    marginLeft: 44,
+    marginHorizontal: 8,
   },
 
   headerRightSpacer: {
@@ -207,101 +223,139 @@ const styles = StyleSheet.create({
     height: 44,
   },
 
+  content: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 22,
+    paddingTop: 4,
+  },
+
+  hero: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+
   icon: {
-    width: 410,
-    height: 210,
-    marginTop: 10,
+    width: 300,
+    height: 200,
+  },
+
+  title: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 26,
+    fontWeight: "900",
+    color: TEXT,
+    lineHeight: 34,
   },
 
   subtitle: {
-    marginTop: 14,
+    marginTop: 10,
     textAlign: "center",
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#8D867C",
+    color: SUBTEXT,
     lineHeight: 22,
   },
 
   form: {
     width: "100%",
-    marginTop: 22,
+    marginTop: 24,
   },
 
   inputWrap: {
     width: "100%",
-    marginBottom: 10,
+    marginBottom: 12,
   },
+
   input: {
-    height: 44,
-    borderRadius: 22,
+    height: 52,
+    borderRadius: 999,
     backgroundColor: "#fff",
     paddingHorizontal: 18,
     fontSize: 15,
     fontWeight: "700",
     color: TEXT,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: BORDER,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
 
   checkboxList: {
     width: "100%",
     marginTop: 6,
-    marginBottom: 18,
+    marginBottom: 22,
+    gap: 10,
   },
+
   checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
   },
+
+  checkboxRowPressed: {
+    opacity: 0.85,
+  },
+
   checkboxBox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
+    borderColor: BORDER,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
+
   checkboxBoxOn: {
     backgroundColor: "#E9D6C1",
     borderColor: "#E0C5A1",
   },
+
   checkboxCheck: {
     fontSize: 14,
     fontWeight: "900",
     color: "#8B6A49",
   },
+
   checkboxLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8D867C",
+    color: SUBTEXT,
   },
 
   signupButton: {
     width: "100%",
-    height: 56,
-    borderRadius: 28,
+    height: 68,
+    borderRadius: 18,
     backgroundColor: BROWN,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    marginTop: 0,
   },
-  signupButtonDisabled: { opacity: 0.55 },
+
+  signupButtonDisabled: {
+    opacity: 0.55,
+  },
+
   buttonPressed: {
     transform: [{ scale: 0.97 }],
-    opacity: 0.95,
+    opacity: 0.94,
   },
+
   signupButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
   },
 });
-

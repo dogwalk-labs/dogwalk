@@ -1,35 +1,56 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, Pressable, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  Dimensions,
+} from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 const BG = "#FBF3DD";
-const TEXT = "#5A4A37";
+const TEXT = "#2B2B2B";
 const BROWN = "#B08B5A";
+const SUBTEXT = "#A79A86";
+const BORDER = "rgba(84, 50, 208, 0.12)";
 
 export default function OnboardingSlide3({ onLoginPress, onSignupPress }) {
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <Image
-        source={require("../assets/onboardingPage_LoginRegister.png")}
-        style={styles.icon}
-        resizeMode="contain"
-      />
+      <View style={styles.hero}>
+        <Image
+          source={require("../assets/onboardingPage_LoginRegister.png")}
+          style={styles.icon}
+          resizeMode="contain"
+        />
+      </View>
+
       <Text style={styles.title}>멍멍워크 시작하기</Text>
       <Text style={styles.subtitle}>산책, 이제는 고민 없이!</Text>
 
-      <Pressable
-        style={({ pressed }) => [styles.signupButton, pressed && styles.buttonPressed]}
-        onPress={onSignupPress}
-      >
-        <Text style={styles.signupText}>회원 가입</Text>
-      </Pressable>
+      <View style={styles.buttonArea}>
+        <Pressable
+          onPress={onSignupPress}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            pressed && styles.primaryButtonPressed,
+          ]}
+        >
+          <Text style={styles.primaryButtonText}>회원 가입</Text>
+        </Pressable>
 
-      <Pressable
-        style={({ pressed }) => [styles.loginButton, pressed && styles.buttonPressed]}
-        onPress={onLoginPress}
-      >
-        <Text style={styles.loginText}>로그인</Text>
-      </Pressable>
+        <Pressable
+          onPress={onLoginPress}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed && styles.secondaryButtonPressed,
+          ]}
+        >
+          <Text style={styles.secondaryButtonText}>로그인</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -37,70 +58,97 @@ export default function OnboardingSlide3({ onLoginPress, onSignupPress }) {
 const styles = StyleSheet.create({
   slide: {
     flex: 1,
+    width: "100%",
     backgroundColor: BG,
+    paddingHorizontal: 22,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
   },
+
+  hero: {
+    marginTop: -20,
+    alignItems: "center",
+  },
+
   icon: {
-    width: 440,
-    height: 440,
-    marginBottom: -20,
+    width: 300,
+    height: 280,
   },
+
   title: {
+    marginTop: 8,
     textAlign: "center",
-    color: TEXT,
-    fontSize: 42,
-    lineHeight: 52,
+    fontSize: 26,
     fontWeight: "900",
+    color: TEXT,
+    lineHeight: 34,
   },
+
   subtitle: {
     marginTop: 8,
-    marginBottom: 24,
-    color: "#AFA696",
-    fontSize: 20,
+    marginBottom: 28,
+    textAlign: "center",
+    color: SUBTEXT,
+    fontSize: 16,
     fontWeight: "700",
+    lineHeight: 22,
   },
-  signupButton: {
-    width: "88%",
-    height: 56,
-    borderRadius: 28,
+
+  buttonArea: {
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  primaryButton: {
+    width: "100%",
+    height: 68,
     backgroundColor: BROWN,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
-  signupText: {
+
+  primaryButtonPressed: {
+    transform: [{ scale: 0.97 }],
+    opacity: 0.92,
+  },
+
+  primaryButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
   },
-  loginButton: {
-    width: "88%",
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#EBEBEB",
+
+  secondaryButton: {
+    width: "100%",
+    height: 68,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 12,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#D0D0D0",
+    borderColor: BORDER,
     shadowColor: "#000",
     shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
-  loginText: {
-    color: "#222",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  buttonPressed: {
+
+  secondaryButtonPressed: {
     transform: [{ scale: 0.97 }],
+    backgroundColor: "#F7F2EA",
+  },
+
+  secondaryButtonText: {
+    color: BROWN,
+    fontSize: 20,
+    fontWeight: "900",
   },
 });

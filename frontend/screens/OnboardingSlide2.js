@@ -2,18 +2,28 @@ import React from "react";
 import { View, Text, StyleSheet, Image, Dimensions } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 const BG = "#FBF3DD";
-const TEXT = "#5A4A37";
+const TEXT = "#2B2B2B";
 
 export default function OnboardingSlide2() {
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <Image
-        source={require("../assets/onboardingPage_foot.png")}
-        style={styles.icon}
-        resizeMode="contain"
-      />
-      <Text style={styles.title}>반려동물과{"\n"}함께 걷기 좋은 코스를{"\n"}추천해줄게요!</Text>
+      <View style={styles.heroBox}>
+        <Image
+          source={require("../assets/onboardingPage_foot.png")}
+          style={styles.iconFoot}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.titleBox}>
+        <Text style={styles.title}>
+          반려동물과{"\n"}
+          함께 걷기 좋은 코스를{"\n"}
+          추천해줄게요!
+        </Text>
+      </View>
     </View>
   );
 }
@@ -21,21 +31,39 @@ export default function OnboardingSlide2() {
 const styles = StyleSheet.create({
   slide: {
     flex: 1,
+    width: "100%",
     backgroundColor: BG,
+    paddingHorizontal: 22,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
   },
-  icon: {
-    width: 320,
+
+  heroBox: {
+    width: "100%",
+    height: 340,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+
+  iconFoot: {
+    width: 300,
     height: 200,
-    marginBottom: 24,
+    transform: [{ translateY: -10 }],
   },
+
+  titleBox: {
+    width: "100%",
+    minHeight: 120,
+    marginTop: 12,
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+
   title: {
     textAlign: "center",
-    color: TEXT,
-    fontSize: 32,
-    lineHeight: 52,
+    fontSize: 26,
     fontWeight: "900",
+    color: TEXT,
+    lineHeight: 36,
   },
 });

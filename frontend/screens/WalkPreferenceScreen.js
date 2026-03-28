@@ -6,12 +6,15 @@ import {
   Pressable,
   Dimensions,
   Alert,
+  SafeAreaView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const BG = "#FBF3DD";
 const TEXT = "#2B2B2B";
+const BROWN = "#B08B5A";
 
 const TAGS = [
   { key: "park", label: "공원", emoji: "🌳", bg: "#E8F6E8", text: "#2E8B57", active: "#37A66A" },
@@ -26,7 +29,7 @@ const TAGS = [
   { key: "nature", label: "자연 많은 곳", emoji: "🌿", bg: "#EEF9E8", text: "#66A04A", active: "#78B75A" },
 ];
 
-export default function WalkReviewSlide3({ onSelectTags }) {
+export default function WalkPreferenceScreen({ navigation }) {
   const [selectedKeys, setSelectedKeys] = useState([]);
 
   const toggleTag = (key) => {
@@ -34,70 +37,87 @@ export default function WalkReviewSlide3({ onSelectTags }) {
       const alreadySelected = prev.includes(key);
 
       if (alreadySelected) {
-        const next = prev.filter((v) => v !== key);
-        onSelectTags?.(next);
-        return next;
+        return prev.filter((v) => v !== key);
       }
 
       if (prev.length >= 3) {
-        Alert.alert(
-          "알림",
-          "최대 3개까지 선택 가능하다멍!",
-          [{ text: "확인하기" }]
-        );
+        Alert.alert("알림", "최대 3개까지 선택 가능하다멍!");
         return prev;
       }
 
-      const next = [...prev, key];
-      onSelectTags?.(next);
-      return next;
+      return [...prev, key];
+    });
+  };
+
+  const goNext = () => {
+    navigation.navigate("TimeSelect", {
+      selectedTags: selectedKeys,
     });
   };
 
   return (
-    <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <Text style={styles.title}>
-        오늘 산책과 어울리는{"\n"}키워드를 말해 주세요!
-      </Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+        
+        {/* 뒤로가기 */}
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+        >
+          <Ionicons name="chevron-back" size={28} color={TEXT} />
+        </Pressable>
 
-      <View style={styles.tagWrap}>
-        {TAGS.map((tag) => {
-          const selected = selectedKeys.includes(tag.key);
+        {/* 제목 */}
+        <Text style={styles.title}>
+          오늘 하고 싶은{"\n"}산책 키워드를 말해 주세요!
+        </Text>
 
-          return (
-            <Pressable
-              key={tag.key}
-              onPress={() => toggleTag(tag.key)}
-              style={({ pressed }) => [
-                styles.tagButton,
-                styles.shadowButton,
-                {
-                  backgroundColor: selected ? tag.active : tag.bg,
-                },
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tagText,
-                  { color: selected ? "#FFFFFF" : tag.text },
+        {/* 태그 */}
+        <View style={styles.tagWrap}>
+          {TAGS.map((tag) => {
+            const selected = selectedKeys.includes(tag.key);
+
+            return (
+              <Pressable
+                key={tag.key}
+                onPress={() => toggleTag(tag.key)}
+                style={({ pressed }) => [
+                  styles.tagButton,
+                  styles.shadowButton,
+                  { backgroundColor: selected ? tag.active : tag.bg },
+                  pressed && styles.buttonPressed,
                 ]}
               >
-                {tag.emoji} {tag.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+                <Text
+                  style={[
+                    styles.tagText,
+                    { color: selected ? "#FFFFFF" : tag.text },
+                  ]}
+                >
+                  {tag.emoji} {tag.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-      <Text style={styles.hint}>
-        선택한 카테고리는 다음 코스 추천에 반영돼요!
-      </Text>
-    </View>
+        {/* 다음 버튼 */}
+        <Pressable style={styles.nextButton} onPress={goNext}>
+          <Text style={styles.nextText}>다음으로</Text>
+        </Pressable>
+
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
   slide: {
     flex: 1,
     backgroundColor: BG,
@@ -106,14 +126,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  backBtn: {
+    position: "absolute",
+    top: 8,
+    left: 10,
+    padding: 8,
+    zIndex: 10,
+  },
+
   title: {
-    fontSize: 27,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: TEXT,
     textAlign: "center",
-    lineHeight: 38,
-    marginBottom: 34,
-    transform: [{ translateY: -20 }],
+    lineHeight: 36,
+    marginBottom: 40,
   },
 
   tagWrap: {
@@ -123,7 +150,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 14,
     paddingHorizontal: 4,
-    transform: [{ translateY: -8 }],
   },
 
   shadowButton: {
@@ -157,11 +183,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  hint: {
-    marginTop: 34,
-    fontSize: 13,
-    color: "#8D867C",
-    textAlign: "center",
-    fontWeight: "600",
+  nextButton: {
+    marginTop: 40,
+    width: "90%",
+    height: 60,
+    backgroundColor: BROWN,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  nextText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
   },
 });

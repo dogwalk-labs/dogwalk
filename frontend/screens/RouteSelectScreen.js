@@ -16,7 +16,7 @@ const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-const API_BASE_URL = "http://192.168.35.60:8000";
+const API_BASE_URL = "http://192.168.0.20:8000";
 
 // 로그인 붙기 전 임시 UUID
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
@@ -327,6 +327,7 @@ const makeHtml = () => `
 
 export default function RouteSelectScreen({ navigation, route }) {
   const minutes = route?.params?.minutes ?? 30;
+  const selectedTags = route?.params?.selectedTags ?? [];
 
   const routes = useMemo(
     () => [
@@ -338,7 +339,6 @@ export default function RouteSelectScreen({ navigation, route }) {
   );
 
   const [selected, setSelected] = useState("A");
-
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [recoRoutes, setRecoRoutes] = useState([]);
@@ -402,6 +402,7 @@ export default function RouteSelectScreen({ navigation, route }) {
             user_id: TEMP_USER_ID,
             start: { lat: coords.latitude, lng: coords.longitude },
             minutes,
+            selected_tags: selectedTags,
           }),
         });
 
@@ -418,7 +419,7 @@ export default function RouteSelectScreen({ navigation, route }) {
         }
 
         setRecoRoutes(list);
-        console.log("RECO OK", list.length, list);
+        console.log("RECO OK", list.length, list, "selectedTags:", selectedTags);
       } catch (e) {
         console.log("RECO ERROR", e?.message ?? e);
         setRecoError(e?.message ?? String(e));
@@ -426,7 +427,7 @@ export default function RouteSelectScreen({ navigation, route }) {
         setLoadingReco(false);
       }
     })();
-  }, [coords, minutes]);
+  }, [coords, minutes, selectedTags]);
 
   useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
@@ -462,6 +463,7 @@ export default function RouteSelectScreen({ navigation, route }) {
     console.log("START WALK", {
       selected,
       minutes,
+      selectedTags,
       coords,
       routeId: selectedRoute?.routeId ?? selectedRoute?.pathId,
       selectedRoute,
@@ -472,6 +474,8 @@ export default function RouteSelectScreen({ navigation, route }) {
         ...selectedRoute,
         routeId: selectedRoute?.routeId ?? selectedRoute?.pathId,
       },
+      minutes,
+      selectedTags,
     });
   };
 
@@ -505,7 +509,7 @@ export default function RouteSelectScreen({ navigation, route }) {
 
           <Text style={styles.headerTitle}>코스 선택</Text>
 
-          <View style={{ width: 28 }} />
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.courseRow}>
@@ -557,6 +561,7 @@ export default function RouteSelectScreen({ navigation, route }) {
 
         <View style={styles.dots}>
           <View style={styles.dot} />
+          <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
         </View>
       </View>
@@ -599,6 +604,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
     color: TEXT,
+  },
+
+  headerSpacer: {
+    width: 28,
   },
 
   buttonPressed: {
@@ -706,6 +715,7 @@ const styles = StyleSheet.create({
     bottom: 26,
     flexDirection: "row",
     alignSelf: "center",
+    gap: 10,
   },
 
   dot: {
@@ -713,7 +723,6 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 999,
     backgroundColor: "rgba(0,0,0,0.18)",
-    marginHorizontal: 5,
   },
 
   dotActive: {

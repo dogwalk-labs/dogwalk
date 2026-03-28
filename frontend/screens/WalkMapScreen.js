@@ -14,7 +14,7 @@ import EndWalkConfirmScreen from "./EndWalkConfirmScreen";
 import WalkReviewScreen from "./WalkReviewScreen";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-const API_BASE = "http://192.168.35.60:8080";
+const API_BASE = "http://192.168.0.20:8080";
 
 const CATEGORY_CONFIG = [
   { key: "CAFE", label: "☕ 애견동반 카페", bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },

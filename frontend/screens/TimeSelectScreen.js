@@ -2,8 +2,15 @@ import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function TimeSelectScreen({ navigation }) {
+const BG = "#FBF3DD";
+const TEXT = "#2B2B2B";
+const BROWN = "#B08B5A";
+const BORDER = "rgba(84, 50, 208, 0.12)";
+
+export default function TimeSelectScreen({ navigation, route }) {
   const [selectedMinutes, setSelectedMinutes] = useState(30);
+
+  const selectedTags = route?.params?.selectedTags ?? [];
 
   const options = useMemo(
     () => [
@@ -14,20 +21,31 @@ export default function TimeSelectScreen({ navigation }) {
     []
   );
 
-  const goNext = () => navigation.navigate("RouteSelect", { minutes: selectedMinutes });
+  const goNext = () =>
+    navigation.navigate("RouteSelect", {
+      minutes: selectedMinutes,
+      selectedTags,
+    });
 
   const TimePill = ({ label, value, wide }) => {
     const selected = selectedMinutes === value;
+
     return (
       <Pressable
         onPress={() => setSelectedMinutes(value)}
-        style={[
+        style={({ pressed }) => [
           styles.pill,
           wide ? styles.pillWide : styles.pillHalf,
           selected ? styles.pillSelected : styles.pillUnselected,
+          pressed && styles.pillPressed,
         ]}
       >
-        <Text style={[styles.pillText, selected ? styles.pillTextSelected : styles.pillTextUnselected]}>
+        <Text
+          style={[
+            styles.pillText,
+            selected ? styles.pillTextSelected : styles.pillTextUnselected,
+          ]}
+        >
           {label}
         </Text>
       </Pressable>
@@ -37,42 +55,48 @@ export default function TimeSelectScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {/* 뒤로가기 */}
-        <Pressable style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color="#2B2B2B" />
+        <Pressable
+          style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+        >
+          <Ionicons name="chevron-back" size={28} color={TEXT} />
         </Pressable>
 
-       
         <View style={styles.hero}>
           <Text style={styles.heroIcon}>🐾</Text>
         </View>
 
-        
         <Text style={styles.title}>
           오늘 ‘둥이’의{"\n"}산책 목표 시간은?
         </Text>
 
-        {/* 시간 버튼 */}
         <View style={styles.pillArea}>
           <View style={styles.row}>
-            <TimePill label="30분" value={30} />
-            <TimePill label="60분" value={60} />
+            {options.slice(0, 2).map((item) => (
+              <TimePill key={item.value} label={item.label} value={item.value} />
+            ))}
           </View>
+
           <View style={styles.rowCenter}>
-            <TimePill label="90분" value={90} wide />
+            <TimePill label={options[2].label} value={options[2].value} wide />
           </View>
         </View>
 
-        {/*  시간 버튼 /}
-        <View style={{ height: 70 }} />
+        <View style={styles.bottomArea}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.recommendBtn,
+              pressed && styles.recommendBtnPressed,
+            ]}
+            onPress={goNext}
+          >
+            <Text style={styles.recommendText}>추천 코스 보기</Text>
+          </Pressable>
+        </View>
 
-        {/* 추천 코스 보기 */}
-        <Pressable style={styles.recommendBtn} onPress={goNext}>
-          <Text style={styles.recommendText}>추천 코스 보기</Text>
-        </Pressable>
-
-        {/* 아래 도트 */}
         <View style={styles.dots}>
+          <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
           <View style={styles.dot} />
         </View>
@@ -81,13 +105,11 @@ export default function TimeSelectScreen({ navigation }) {
   );
 }
 
-const BG = "#FBF3DD";
-const TEXT = "#2B2B2B";
-const BROWN = "#B08B5A";
-const BORDER = "rgba(84, 50, 208, 0.12)";
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
 
   container: {
     flex: 1,
@@ -104,20 +126,25 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
-  
+  backBtnPressed: {
+    transform: [{ scale: 0.96 }],
+    opacity: 0.9,
+  },
+
   hero: {
-    marginTop: 150, 
+    marginTop: 150,
     alignItems: "center",
   },
+
   heroIcon: {
-    fontSize: 90, 
+    fontSize: 90,
     lineHeight: 96,
   },
 
   title: {
     marginTop: 18,
     textAlign: "center",
-    fontSize: 26,     
+    fontSize: 26,
     fontWeight: "900",
     color: TEXT,
     lineHeight: 34,
@@ -133,6 +160,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+
   rowCenter: {
     alignItems: "center",
   },
@@ -148,19 +176,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
 
-  pillHalf: { width: "48%" },
-  pillWide: { width: "58%" },
+  pillHalf: {
+    width: "48%",
+  },
 
-  pillUnselected: { borderColor: BORDER },
-  pillSelected: { borderColor: BROWN },
+  pillWide: {
+    width: "58%",
+  },
 
-  pillText: { fontSize: 18, fontWeight: "900" },
-  pillTextUnselected: { color: BROWN },
- pillTextSelected: {
-  color: "#7e613cff",
-},
+  pillUnselected: {
+    borderColor: BORDER,
+  },
+
+  pillSelected: {
+    borderColor: BROWN,
+  },
+
+  pillPressed: {
+    transform: [{ scale: 0.97 }],
+  },
+
+  pillText: {
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  pillTextUnselected: {
+    color: BROWN,
+  },
+
+  pillTextSelected: {
+    color: "#7e613cff",
+  },
+
+  bottomArea: {
+    width: "100%",
+    marginTop: 70,
+  },
 
   recommendBtn: {
     width: "100%",
@@ -169,8 +224,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ translateY: 50 }],
   },
+
+  recommendBtnPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
+  },
+
   recommendText: {
     color: "#fff",
     fontSize: 20,
@@ -183,14 +243,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+
   dot: {
     width: 7,
     height: 7,
     borderRadius: 999,
     backgroundColor: "rgba(0,0,0,0.18)",
   },
+
   dotActive: {
     backgroundColor: "rgba(0,0,0,0.45)",
   },
-
 });
