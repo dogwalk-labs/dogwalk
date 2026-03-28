@@ -1,9 +1,13 @@
 // server.js (ESM)
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { GoogleGenAI } from "@google/genai";
 import { recommend3 } from "./recommend.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +17,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 app.post("/recommend", async (req, res) => {
   console.log("RECOMMEND HIT", new Date().toISOString(), req.body);
@@ -130,6 +138,50 @@ app.get("/pois", (req, res) => {
     return res.status(500).json({
       error: "pois 읽기 실패",
       detail: String(e?.message || e),
+    });
+  }
+});
+
+// 챗봇 API
+app.post("/chat", async (req, res) => {
+  try {
+    console.log("CHAT HIT:", req.body);
+
+    const { message } = req.body ?? {};
+
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({ error: "message 필요" });
+    }
+
+    const prompt = message.trim();
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "너는 반려견 정보를 친절하게 설명하는 한국어 챗봇이다. " +
+          "보호자가 이해하기 쉽게 답하고, 응급상황이 의심되면 즉시 동물병원 방문을 권고해라. " +
+          "확실하지 않은 내용은 추정이라고 분명히 밝혀라.",
+        temperature: 0.7,
+      },
+    });
+
+    console.log("GEMINI RAW RESPONSE:", response);
+
+    const answer =
+      response?.text?.trim() || "답변을 생성하지 못했어요.";
+
+    console.log("GEMINI ANSWER:", answer);
+
+    return res.json({ answer });
+  } catch (e) {
+    console.error("POST /chat error:", e);
+
+    const status = Number(e?.status || 500);
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      error: "chat failed",
+      detail: e?.message || "unknown error",
     });
   }
 });
