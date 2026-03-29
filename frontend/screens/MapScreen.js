@@ -3,9 +3,9 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
+import { POI_SERVICE_BASE_URL } from "../config/config";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-const API_BASE = "http://192.168.0.20:8080";
 
 const CATEGORY_CONFIG = [
   { key: "CAFE",       label: "☕ 애견동반 카페",   bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
@@ -292,7 +292,7 @@ export default function MapScreen({ navigation }) {
       try {
         setPoisLoading(true);
 
-        const res = await fetch(`${API_BASE}/pois`);
+        const res = await fetch(`${POI_SERVICE_BASE_URL}/pois`);
         const data = await res.json();
 
         if (!res.ok) {

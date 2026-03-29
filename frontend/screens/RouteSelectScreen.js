@@ -10,13 +10,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
+import { API_BASE_URL } from "../config/config";
 
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-const API_BASE_URL = "http://192.168.0.20:8000";
 
 // 로그인 붙기 전 임시 UUID
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";

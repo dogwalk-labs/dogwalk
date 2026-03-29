@@ -15,6 +15,7 @@ import CommunityScreen from "./screens/CommunityScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 
 import BottomTabBar from "./components/BottomTabBar";
+import { API_BASE_URL } from "./config/config";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -48,7 +49,7 @@ function MainTabs() {
 
 export default function App() {
   useEffect(() => {
-    fetch("http://192.168.0.20:8000/users/upsert-temp", { method: "POST" })
+    fetch(`${API_BASE_URL}/users/upsert-temp`, { method: "POST" })
       .catch(() => {});
   }, []);
 

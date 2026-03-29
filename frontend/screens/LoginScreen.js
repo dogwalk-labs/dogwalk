@@ -20,11 +20,13 @@ export default function LoginScreen({
   onLoginPress,
   onSignupPress,
   onForgotPress,
+  submitting,
 }) {
-  const [id, setId] = useState("");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
 
-  const canSubmit = id.trim().length > 0 && pw.trim().length > 0;
+  const canSubmit =
+    email.trim().length > 0 && pw.trim().length > 0 && !submitting;
 
   return (
     <KeyboardAvoidingView
@@ -59,12 +61,13 @@ export default function LoginScreen({
 
           <View style={styles.inputWrap}>
             <TextInput
-              value={id}
-              onChangeText={setId}
+              value={email}
+              onChangeText={setEmail}
               style={styles.input}
-              placeholder="아이디를 입력해주세요"
+              placeholder="이메일을 입력해주세요"
               placeholderTextColor="#BDBDBD"
               autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
@@ -86,9 +89,13 @@ export default function LoginScreen({
               !canSubmit && styles.loginButtonDisabled,
               pressed && canSubmit && styles.buttonPressed,
             ]}
-            onPress={() => onLoginPress?.({ id, pw })}
+            onPress={() =>
+              onLoginPress?.({ email: email.trim(), password: pw })
+            }
           >
-            <Text style={styles.loginButtonText}>로그인</Text>
+            <Text style={styles.loginButtonText}>
+              {submitting ? "처리 중…" : "로그인"}
+            </Text>
           </Pressable> 
 
           <View style={styles.hintWrap}>

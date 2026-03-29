@@ -10,11 +10,11 @@ import WalkReviewSlide1 from "./WalkReviewSlide1";
 import WalkReviewSlide2 from "./WalkReviewSlide2";
 import WalkReviewSlide3 from "./WalkReviewSlide3";
 import WalkReviewSlide4 from "./WalkReviewSlide4";
+import { API_BASE_URL } from "../config/config";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-const API_BASE_URL = "http://192.168.0.20:8000";
 const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 async function saveWalkAndFeedback(selectedRoute, walkStats, value) {

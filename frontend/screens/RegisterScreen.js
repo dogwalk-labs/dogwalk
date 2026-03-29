@@ -35,7 +35,9 @@ function CheckboxRow({ label, checked, onToggle }) {
   );
 }
 
-export default function RegisterScreen({ onBack, onSignupPress }) {
+const MIN_PASSWORD_LEN = 8;
+
+export default function RegisterScreen({ onBack, onSignupPress, submitting }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
@@ -46,6 +48,8 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
     if (email.trim().length === 0) return false;
     if (pw.trim().length === 0) return false;
     if (pwConfirm.trim().length === 0) return false;
+    if (pw.length < MIN_PASSWORD_LEN || pwConfirm.length < MIN_PASSWORD_LEN)
+      return false;
     if (pw !== pwConfirm) return false;
     if (!agreeTerms) return false;
     if (!agreePrivacy) return false;
@@ -104,9 +108,10 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
                   value={email}
                   onChangeText={setEmail}
                   style={styles.input}
-                  placeholder="아이디 생성"
+                  placeholder="이메일 주소"
                   placeholderTextColor="#BDBDBD"
                   autoCapitalize="none"
+                  keyboardType="email-address"
                 />
               </View>
 
@@ -146,11 +151,11 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
               </View>
 
               <Pressable
-                disabled={!canSubmit}
+                disabled={!canSubmit || submitting}
                 style={({ pressed }) => [
                   styles.signupButton,
-                  !canSubmit && styles.signupButtonDisabled,
-                  pressed && canSubmit && styles.buttonPressed,
+                  (!canSubmit || submitting) && styles.signupButtonDisabled,
+                  pressed && canSubmit && !submitting && styles.buttonPressed,
                 ]}
                 onPress={() =>
                   onSignupPress?.({
@@ -161,7 +166,9 @@ export default function RegisterScreen({ onBack, onSignupPress }) {
                   })
                 }
               >
-                <Text style={styles.signupButtonText}>회원 가입</Text>
+                <Text style={styles.signupButtonText}>
+                  {submitting ? "처리 중…" : "회원 가입"}
+                </Text>
               </Pressable>
             </View>
           </View>
