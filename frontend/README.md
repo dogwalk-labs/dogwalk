@@ -24,11 +24,9 @@ ipconfig
 # IPv4 주소 확인 (예: 192.168.0.xxx)
 ```
 
-아래 파일들에서 `192.168.35.196` 를 본인 IP로 교체:
-- `frontend/screens/RouteSelectScreen.js` 4번째 줄 `API_BASE_URL`
-- `frontend/screens/WalkReviewScreen.js` 상단 `API_BASE_URL`
-- `frontend/App.js` useEffect 안 fetch URL
-(효원: WalkMapScreen.js, WalkReviewScreen.js 'API_BASE_URL'도 다 바꾸니까 실행됐어요 저는.. 확인 해보고 이건 지우셔도 됩니다)
+아래 파일에서 `SERVER_HOST` 를 본인 IP로 교체:
+- `frontend/config/config.js` 에서 `SERVER HOST`
+
 ---
 
 ## 3. Docker 실행 (DB + OSRM + Node 추천 서버)
