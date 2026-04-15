@@ -94,7 +94,7 @@ async function circularRoute(start, deg, radius, wpCount) {
 
 /* ---------------- main ---------------- */
 
-async function recommend3({ start, minutes, count = 3 }) {
+async function recommend3({ start, minutes, count = 3, tags = [] }) {
   const radius = radiusForMinutes(minutes);
 
   const waypointCount =
@@ -117,15 +117,19 @@ async function recommend3({ start, minutes, count = 3 }) {
 
       const dist = r.distance;
 
-      const duration =
-        (dist / PACE_M_PER_MIN) * 60;
+      const duration = r.duration;
 
-      const diff =
+      let score =
         Math.abs(duration - targetSec);
+
+      if (tags.includes("park")) score -= 10;
+      if (tags.includes("river")) score -= 10;
+      if (tags.includes("nature")) score -= 10;
+      if (tags.includes("quiet")) score -= 10;
 
       candidates.push({
         routeId: routeId(r.geometry),
-        score: diff,
+        score: score,
         distanceM: dist,
         durationSec: duration,
         geometry: r.geometry
@@ -146,7 +150,7 @@ async function recommend3({ start, minutes, count = 3 }) {
       minutes,
       title: `${minutes}분 산책`,
       distanceM: r.distance,
-      durationSec: r.distance / PACE_M_PER_MIN * 60,
+      durationSec: r.duration,
       geometry: r.geometry
     }];
   }

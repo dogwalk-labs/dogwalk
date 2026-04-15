@@ -8,6 +8,7 @@ from app.core.security import get_current_user_id
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+# 🔹 내 정보 조회
 @router.get("/me")
 def get_my_user(
     user_id: str = Depends(get_current_user_id),
@@ -23,12 +24,15 @@ def get_my_user(
     ).mappings().fetchone()
 
     if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+        raise HTTPException(
+            status_code=404,
+            detail="사용자를 찾을 수 없습니다."
+        )
 
     return {
         "id": str(user["id"]),
         "email": user["email"],
         "nickname": user["nickname"],
         "provider": user["provider"],
-        "created_at": user["created_at"],
+        "created_at": user["created_at"].isoformat() if user["created_at"] else None,
     }

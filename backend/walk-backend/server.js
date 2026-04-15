@@ -19,7 +19,7 @@ app.post("/recommend", async (req, res) => {
   console.time("RECOMMEND");
 
   try {
-    const { start, minutes, userId, bannedRouteIds, count } = req.body ?? {};
+    const { start, minutes, userId, bannedRouteIds, count, tags } = req.body ?? {};
 
     if (
       !start ||
@@ -54,6 +54,7 @@ app.post("/recommend", async (req, res) => {
       userId: uid,
       count: c,
       bannedRouteIds: banned,
+      tags: Array.isArray(tags) ? tags : [],
     });
 
     return res.json({
