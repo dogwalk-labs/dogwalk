@@ -11,6 +11,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { API_BASE_URL } from "../config/config";
+import { getAccessToken } from "../auth/authStorage"; 
+// 수정 이유:
+// 추천 API는 백엔드에서 get_current_user_id()로 로그인 사용자를 읽음.
+// 그래서 프론트도 저장된 access token을 꺼내서 Authorization 헤더에 실어 보내야 함.
 
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
@@ -19,7 +23,10 @@ const COURSE_BROWN = "#dbbc93ff";
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
 // 로그인 붙기 전 임시 UUID
-const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
+// const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
+// 수정 이유:
+// 이제 백엔드가 토큰에서 user_id를 꺼내므로 프론트가 임시 user_id를 보낼 필요가 없음.
+// 헷갈리지 않게 주석 처리하거나 삭제하는 게 맞음.
 
 const makeHtml = () => `
 <!doctype html>
@@ -395,15 +402,38 @@ export default function RouteSelectScreen({ navigation, route }) {
         setLoadingReco(true);
         setRecoError(null);
 
+        const token = await getAccessToken();
+        // 수정 이유:
+        // 백엔드 /routes/recommend 는 Authorization Bearer 토큰이 있어야
+        // get_current_user_id()로 로그인한 사용자를 식별할 수 있음.
+        // 이 토큰이 없으면 401 에러가 나고, 앱에서는 something went wrong 로 보일 수 있음.
+
+        if (!token) {
+          throw new Error("로그인 토큰이 없습니다. 다시 로그인해주세요.");
+        }
+        // 수정 이유:
+        // 토큰이 없는 상태에서 요청 보내면 백엔드 인증 실패가 나기 때문에
+        // 미리 사용자에게 원인을 보여주는 게 디버깅에 좋음.
+
         const res = await fetch(`${API_BASE_URL}/routes/recommend`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // 수정 이유:
+          // Authorization 헤더 추가.
+          // PowerShell 테스트는 토큰 넣고 성공했으니 프론트도 똑같이 보내야 함.
           body: JSON.stringify({
-            user_id: TEMP_USER_ID,
             start: { lat: coords.latitude, lng: coords.longitude },
             minutes,
-            selected_tags: selectedTags,
+            tags: selectedTags,
           }),
+          // 수정 이유:
+          // 1) user_id 제거:
+          //    이제 백엔드가 토큰에서 user_id를 읽으므로 프론트가 따로 보낼 필요 없음.
+          // 2) selected_tags -> tags 로 변경:
+          //    백엔드 recommend request 형식이 tags 를 기대하도록 맞췄기 때문.
         });
 
         if (!res.ok) {
@@ -413,6 +443,8 @@ export default function RouteSelectScreen({ navigation, route }) {
 
         const data = await res.json();
         const list = Array.isArray(data?.routes) ? data.routes : [];
+        // 수정 이유:
+        // 백엔드 응답 형식은 { routes: [...] } 이므로 data.routes 로 읽는 게 맞음.
 
         if (list.length === 0) {
           throw new Error("routes empty");
