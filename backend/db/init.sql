@@ -1,4 +1,5 @@
 ﻿-- 확장 기능
+SELECT * FROM pg_extension WHERE extname = 'postgis';
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "postgis";
 

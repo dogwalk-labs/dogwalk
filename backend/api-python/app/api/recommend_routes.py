@@ -77,87 +77,116 @@ async def recommend(
     user_id: str = Depends(get_current_user_id),
 ):
     print("### /routes/recommend entered ###", flush=True)
+    print(f"### user_id={user_id}, tags={req.tags}, minutes={req.minutes}")
 
-    # 일단 원인 분리 위해 DB 인기경로 로직은 잠시 빼고
-    # Node 추천 3개만 프록시
+    # ⭐ 1단계: DB에서 인기 경로 1개만 찾기
+    db_routes = []
 
-    """
-    # ===== 나중에 다시 붙일 DB 개인화 로직 =====
+    if req.tags:
+        try:
+            rows = db.execute(
+                text("""
+                    SELECT
+                        p.id AS path_id,
+                        p.minutes,
+                        p.distance_m,
+                        p.duration_sec,
+                        ST_AsGeoJSON(p.geom) AS geometry_json,
+                        p.meta,
+                        SUM(ptc.count) AS match_score
+                    FROM paths p
+                    JOIN path_tag_counts ptc ON p.id = ptc.path_id
+                    WHERE
+                        ST_DWithin(
+                            ST_StartPoint(p.geom)::geography,
+                            ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                            500
+                        )
+                        AND ptc.tag = ANY(:tags)
+                        AND p.minutes BETWEEN :min_low AND :min_high
+                    GROUP BY p.id, p.minutes, p.distance_m, p.duration_sec, p.geom, p.meta
+                    ORDER BY match_score DESC
+                    LIMIT 1
+                """),
+                {
+                    "lng": req.start.lng,
+                    "lat": req.start.lat,
+                    "tags": req.tags,
+                    "min_low": req.minutes - 10,
+                    "min_high": req.minutes + 10,
+                },
+            ).mappings().all()
 
-    # 1. 사용자가 좋아요(value=1)한 피드백의 tags 가져오기
-    liked_rows = db.execute(
-        text(\"\"\"
-            SELECT tags
-            FROM feedback
-            WHERE user_id = :uid AND value = 1
-        \"\"\"),
-        {"uid": user_id},
-    ).fetchall()
+            for row in rows:
+                geometry = json.loads(row["geometry_json"]) if row["geometry_json"] else None
+                meta = row["meta"] or {}
 
-    liked_tags = []
-    for row in liked_rows:
-        row_tags = row[0] or []
-        if isinstance(row_tags, list):
-            liked_tags.extend(row_tags)
+                db_routes.append({
+                    "routeId": meta.get("route_id") or str(row["path_id"]),
+                    "pathId": str(row["path_id"]),
+                    "minutes": row["minutes"],
+                    "title": f"🔥 인기 코스 (추천 {row['match_score']}회)",
+                    "distanceM": row["distance_m"],
+                    "durationSec": row["duration_sec"],
+                    "geometry": geometry,
+                    "fromDb": True,
+                })
 
-    # 중복 제거
-    liked_tags = list(dict.fromkeys(liked_tags))
+            print(f"### DB에서 {len(db_routes)}개 경로 찾음")
 
-    # 2. 사용자가 이미 평가한 경로 제외용 path_id 가져오기
-    banned_rows = db.execute(
-        text(\"\"\"
-            SELECT path_id
-            FROM feedback
-            WHERE user_id = :uid
-        \"\"\"),
-        {"uid": user_id},
-    ).fetchall()
+        except Exception as e:
+            print(f"### DB 조회 실패 (무시하고 OSRM으로 진행): {e}")
+            db_routes = []
 
-    banned_route_ids = [str(row[0]) for row in banned_rows]
+    # ⭐ 2단계: 나머지를 OSRM에서 새로 만들기 (DB가 1개면 2개, 없으면 3개)
+    needed = 3 - len(db_routes)
+    osrm_routes = []
 
-    # 3. 현재 화면에서 선택한 tags + 과거 선호 tags 합치기
-    merged_tags = list(dict.fromkeys(req.tags + liked_tags))
-    """
+    if needed > 0:
+        payload = {
+            "start": req.start.model_dump(),
+            "minutes": req.minutes,
+            "userId": user_id,
+            "count": needed,
+            "tags": req.tags,
+        }
 
-    payload = {
-        "start": req.start.model_dump(),
-        "minutes": req.minutes,
-        "userId": user_id,
-        "count": 3,
-        "tags": req.tags,
-    }
+        url = "http://127.0.0.1:8080/recommend"
 
-    # 나중에 DB 개인화 다시 붙일 때 사용할 코드
-    """
-    payload["tags"] = merged_tags
-    payload["bannedRouteIds"] = banned_route_ids
-    """
+        try:
+            body = json.dumps(payload).encode("utf-8")
+            request = urllib.request.Request(
+                url,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
 
-    url = "http://127.0.0.1:8080/recommend"
+            with urllib.request.urlopen(request, timeout=30) as response:
+                raw = response.read().decode("utf-8")
+                node_data = json.loads(raw)
+                osrm_routes = node_data.get("routes", [])
 
-    try:
-        body = json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(
-            url,
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+            print(f"### OSRM에서 {len(osrm_routes)}개 경로 받음")
 
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read().decode("utf-8")
-            node_data = json.loads(raw)
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="ignore")
+            print(f"### OSRM 호출 실패: {e.code} / {detail}")
+            if not db_routes:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Recommender HTTPError: {e.code} / {detail}"
+                )
+        except Exception as e:
+            print(f"### OSRM 호출 실패: {e}")
+            if not db_routes:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Recommender call failed: {type(e).__name__}: {repr(e)}"
+                )
 
-        return {"routes": node_data.get("routes", [])}
+    # ⭐ 3단계: DB 1개 + OSRM N개 합쳐서 반환
+    all_routes = db_routes + osrm_routes
+    print(f"### 최종 추천: DB {len(db_routes)}개 + OSRM {len(osrm_routes)}개 = {len(all_routes)}개")
 
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", errors="ignore")
-        raise HTTPException(
-            status_code=502,
-            detail=f"Recommender HTTPError: {e.code} / {detail}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Recommender call failed: {type(e).__name__}: {repr(e)}"
-        )
+    return {"routes": all_routes}

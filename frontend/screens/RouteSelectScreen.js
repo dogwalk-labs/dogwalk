@@ -1,3 +1,4 @@
+//RouteSelectScreen.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -12,21 +13,12 @@ import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { API_BASE_URL } from "../config/config";
 import { getAccessToken } from "../auth/authStorage"; 
-// 수정 이유:
-// 추천 API는 백엔드에서 get_current_user_id()로 로그인 사용자를 읽음.
-// 그래서 프론트도 저장된 access token을 꺼내서 Authorization 헤더에 실어 보내야 함.
 
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 const COURSE_BROWN = "#dbbc93ff";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
-
-// 로그인 붙기 전 임시 UUID
-// const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
-// 수정 이유:
-// 이제 백엔드가 토큰에서 user_id를 꺼내므로 프론트가 임시 user_id를 보낼 필요가 없음.
-// 헷갈리지 않게 주석 처리하거나 삭제하는 게 맞음.
 
 const makeHtml = () => `
 <!doctype html>
@@ -336,15 +328,6 @@ export default function RouteSelectScreen({ navigation, route }) {
   const minutes = route?.params?.minutes ?? 30;
   const selectedTags = route?.params?.selectedTags ?? [];
 
-  const routes = useMemo(
-    () => [
-      { id: "A", label: "코스 A", idx: 0 },
-      { id: "B", label: "코스 B", idx: 1 },
-      { id: "C", label: "코스 C", idx: 2 },
-    ],
-    []
-  );
-
   const [selected, setSelected] = useState("A");
   const [coords, setCoords] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -353,6 +336,21 @@ export default function RouteSelectScreen({ navigation, route }) {
   const [recoError, setRecoError] = useState(null);
 
   const webviewRef = useRef(null);
+
+  // ⭐ routes는 recoRoutes state 정의 후에!
+  const routes = useMemo(() => {
+    const base = [
+      { id: "A", label: "코스 A", idx: 0 },
+      { id: "B", label: "코스 B", idx: 1 },
+      { id: "C", label: "코스 C", idx: 2 },
+    ];
+
+    return base.map((r) => ({
+      ...r,
+      fromDb: recoRoutes?.[r.idx]?.fromDb === true,
+      matchScore: recoRoutes?.[r.idx]?.title?.match(/\d+/)?.[0] || null,
+    }));
+  }, [recoRoutes]);
 
   useEffect(() => {
     (async () => {
@@ -403,17 +401,10 @@ export default function RouteSelectScreen({ navigation, route }) {
         setRecoError(null);
 
         const token = await getAccessToken();
-        // 수정 이유:
-        // 백엔드 /routes/recommend 는 Authorization Bearer 토큰이 있어야
-        // get_current_user_id()로 로그인한 사용자를 식별할 수 있음.
-        // 이 토큰이 없으면 401 에러가 나고, 앱에서는 something went wrong 로 보일 수 있음.
 
         if (!token) {
           throw new Error("로그인 토큰이 없습니다. 다시 로그인해주세요.");
         }
-        // 수정 이유:
-        // 토큰이 없는 상태에서 요청 보내면 백엔드 인증 실패가 나기 때문에
-        // 미리 사용자에게 원인을 보여주는 게 디버깅에 좋음.
 
         const res = await fetch(`${API_BASE_URL}/routes/recommend`, {
           method: "POST",
@@ -421,19 +412,11 @@ export default function RouteSelectScreen({ navigation, route }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          // 수정 이유:
-          // Authorization 헤더 추가.
-          // PowerShell 테스트는 토큰 넣고 성공했으니 프론트도 똑같이 보내야 함.
           body: JSON.stringify({
             start: { lat: coords.latitude, lng: coords.longitude },
             minutes,
             tags: selectedTags,
           }),
-          // 수정 이유:
-          // 1) user_id 제거:
-          //    이제 백엔드가 토큰에서 user_id를 읽으므로 프론트가 따로 보낼 필요 없음.
-          // 2) selected_tags -> tags 로 변경:
-          //    백엔드 recommend request 형식이 tags 를 기대하도록 맞췄기 때문.
         });
 
         if (!res.ok) {
@@ -443,8 +426,6 @@ export default function RouteSelectScreen({ navigation, route }) {
 
         const data = await res.json();
         const list = Array.isArray(data?.routes) ? data.routes : [];
-        // 수정 이유:
-        // 백엔드 응답 형식은 { routes: [...] } 이므로 data.routes 로 읽는 게 맞음.
 
         if (list.length === 0) {
           throw new Error("routes empty");
@@ -549,21 +530,29 @@ export default function RouteSelectScreen({ navigation, route }) {
             const on = r.id === selected;
 
             return (
-              <Pressable
-                key={r.id}
-                style={({ pressed }) => [
-                  styles.courseChip,
-                  on && styles.courseChipOn,
-                  on && styles.courseChipBorderOn,
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={() => setSelected(r.id)}
-                disabled={loadingReco}
-              >
-                <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
-                  {r.label}
-                </Text>
-              </Pressable>
+              <View key={r.id} style={styles.chipWrapper}>
+                {r.fromDb && (
+                  <View style={styles.popularBadge}>
+                    <Text style={styles.popularBadgeText}>🔥 인기</Text>
+                  </View>
+                )}
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.courseChip,
+                    on && styles.courseChipOn,
+                    on && styles.courseChipBorderOn,
+                    r.fromDb && styles.courseChipPopular,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => setSelected(r.id)}
+                  disabled={loadingReco}
+                >
+                  <Text style={[styles.courseChipText, on && styles.courseChipTextOn]}>
+                    {r.label}
+                  </Text>
+                </Pressable>
+              </View>
             );
           })}
         </View>
@@ -648,12 +637,41 @@ const styles = StyleSheet.create({
 
   courseRow: {
     position: "absolute",
-    bottom: 150,
+    bottom: 160,
     left: 18,
     right: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
+    paddingTop: 20,
+  },
+
+  chipWrapper: {
+    flex: 1,
+    position: "relative",
+  },
+
+  popularBadge: {
+    position: "absolute",
+    top: -18,
+    left: "50%",
+    transform: [{ translateX: -30 }],
+    backgroundColor: "#FF6B6B",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+
+  popularBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "900",
   },
 
   courseChip: {
@@ -680,6 +698,11 @@ const styles = StyleSheet.create({
   courseChipBorderOn: {
     borderWidth: 1.4,
     borderColor: "#b98954ff",
+  },
+
+  courseChipPopular: {
+    borderWidth: 2,
+    borderColor: "#FF6B6B",
   },
 
   courseChipText: {

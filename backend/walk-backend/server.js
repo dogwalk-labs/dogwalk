@@ -36,19 +36,13 @@ app.post("/recommend", async (req, res) => {
     const m = Number(minutes);
     const uid = userId ?? "anon";
 
-    const banned = Array.isArray(bannedRouteIds)
-      ? bannedRouteIds.filter((x) => typeof x === "string" && x.length > 0)
-      : [];
-
-    const cRaw = Number(count);
-    const c = Number.isFinite(cRaw)
-      ? Math.max(1, Math.min(3, Math.floor(cRaw)))
-      : 3;
+    // ... 중간 코드 그대로 ...
 
     const routes = await recommend3({
       start: {
-        lat: Number(start.lat),
-        lng: Number(start.lng),
+        // ⭐ 좌표 반올림 (소수점 4자리 = 약 11m)
+        lat: Math.round(Number(start.lat) * 10000) / 10000,
+        lng: Math.round(Number(start.lng) * 10000) / 10000,
       },
       minutes: m,
       userId: uid,
@@ -61,10 +55,9 @@ app.post("/recommend", async (req, res) => {
       routes: Array.isArray(routes) ? routes : [],
     });
   } catch (e) {
-    console.error("POST /recommend error:", e);
-    return res.status(500).json({
-      error: e?.message || "recommend failed",
-    });
+    // ...
+  }
+});
   } finally {
     console.timeEnd("RECOMMEND");
   }

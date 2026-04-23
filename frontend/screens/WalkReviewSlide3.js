@@ -12,6 +12,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const BG = "#FBF3DD";
 const TEXT = "#2B2B2B";
+const BROWN = "#8E6A3D";  // ⭐ 버튼 색상
 
 const TAGS = [
   { key: "park", label: "공원", emoji: "🌳", bg: "#E8F6E8", text: "#2E8B57", active: "#37A66A" },
@@ -26,7 +27,7 @@ const TAGS = [
   { key: "nature", label: "자연 많은 곳", emoji: "🌿", bg: "#EEF9E8", text: "#66A04A", active: "#78B75A" },
 ];
 
-export default function WalkReviewSlide3({ onSelectTags }) {
+export default function WalkReviewSlide3({ onSelectTags, onConfirm }) {  // ⭐ onConfirm 추가
   const [selectedKeys, setSelectedKeys] = useState([]);
 
   const toggleTag = (key) => {
@@ -52,6 +53,15 @@ export default function WalkReviewSlide3({ onSelectTags }) {
       onSelectTags?.(next);
       return next;
     });
+  };
+
+  // ⭐ 확인 버튼 핸들러
+  const handleConfirm = () => {
+    if (selectedKeys.length === 0) {
+      Alert.alert("알림", "최소 1개 이상 선택해주세요!", [{ text: "확인" }]);
+      return;
+    }
+    onConfirm?.();
   };
 
   return (
@@ -93,6 +103,21 @@ export default function WalkReviewSlide3({ onSelectTags }) {
       <Text style={styles.hint}>
         선택한 카테고리는 다음 코스 추천에 반영돼요!
       </Text>
+
+      {/* ⭐ 확인 버튼 추가 */}
+      <Pressable
+        onPress={handleConfirm}
+        style={({ pressed }) => [
+          styles.confirmBtn,
+          selectedKeys.length === 0 && styles.confirmBtnDisabled,
+          pressed && styles.buttonPressed,
+        ]}
+        disabled={selectedKeys.length === 0}
+      >
+        <Text style={styles.confirmText}>
+          선택 완료 ({selectedKeys.length}/3)
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -163,5 +188,32 @@ const styles = StyleSheet.create({
     color: "#8D867C",
     textAlign: "center",
     fontWeight: "600",
+  },
+
+  /* ⭐ 확인 버튼 스타일 */
+  confirmBtn: {
+    marginTop: 24,
+    width: "100%",
+    maxWidth: 280,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BROWN,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+
+  confirmBtnDisabled: {
+    backgroundColor: "#C9C9C9",
+  },
+
+  confirmText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
   },
 });

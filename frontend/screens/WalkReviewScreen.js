@@ -1,3 +1,4 @@
+//WalkReviewScreen.js
 import React, { useRef, useState } from "react";
 import {
   View,
@@ -11,21 +12,29 @@ import WalkReviewSlide2 from "./WalkReviewSlide2";
 import WalkReviewSlide3 from "./WalkReviewSlide3";
 import WalkReviewSlide4 from "./WalkReviewSlide4";
 import { API_BASE_URL } from "../config/config";
+import { getAccessToken } from "../auth/authStorage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
 
-const TEMP_USER_ID = "11111111-1111-1111-1111-111111111111";
-
-async function saveWalkAndFeedback(selectedRoute, walkStats, value) {
+// ⭐ value와 tags를 모두 받도록 수정
+async function saveWalkAndFeedback(selectedRoute, walkStats, value, tags = []) {
   try {
+    const token = await getAccessToken();
+
+    if (!token) {
+      throw new Error("로그인 토큰이 없습니다. 다시 로그인해주세요.");
+    }
+
     console.log("API 호출:", `${API_BASE_URL}/paths`);
 
     const pathRes = await fetch(`${API_BASE_URL}/paths`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
-        user_id: TEMP_USER_ID,
         minutes: selectedRoute?.minutes ?? 30,
         distance_m:
           Math.round((walkStats?.distanceKm ?? 0) * 1000) ||
@@ -34,24 +43,39 @@ async function saveWalkAndFeedback(selectedRoute, walkStats, value) {
         duration_sec:
           walkStats?.elapsedSeconds ?? selectedRoute?.durationSec ?? 0,
         geometry: selectedRoute?.geometry ?? null,
+        route_id: selectedRoute?.routeId ?? null,  // ⭐ 추가!
       }),
     });
+
+    if (!pathRes.ok) {
+      const errText = await pathRes.text();
+      throw new Error(`paths failed: ${pathRes.status} ${errText}`);
+    }
 
     const pathData = await pathRes.json();
     const pathId = pathData?.pathId;
     if (!pathId) throw new Error("pathId 없음");
 
-    await fetch(`${API_BASE_URL}/feedback`, {
+    const feedbackRes = await fetch(`${API_BASE_URL}/feedback`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
-        user_id: TEMP_USER_ID,
         path_id: pathId,
         value,
+        tags,
       }),
     });
 
-    console.log("저장 완료 pathId:", pathId);
+    if (!feedbackRes.ok) {
+      const errText = await feedbackRes.text();
+      throw new Error(`feedback failed: ${feedbackRes.status} ${errText}`);
+    }
+
+    console.log("저장 완료 pathId:", pathId, "tags:", tags);
+    return pathId;
   } catch (e) {
     console.log("저장 실패:", e?.message ?? e);
   }
@@ -66,6 +90,41 @@ export default function WalkReviewScreen({
 }) {
   const scrollRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // ⭐ 사용자가 선택한 태그들을 저장
+  const [selectedTags, setSelectedTags] = useState([]);
+
+  const goToSlide = (index) => {
+    scrollRef.current?.scrollTo({
+      x: SCREEN_WIDTH * index,
+      animated: true,
+    });
+  };
+
+  // ⭐ 좋아요/아쉬워요 핸들러
+  const handleFeedback = (value) => {
+    if (value === 1) {
+      // 👍 좋아요: 일단 슬라이드3(카테고리)으로 이동만
+      // 저장은 카테고리 선택 후 Slide4로 넘어갈 때
+      goToSlide(2);
+    } else {
+      // 👎 아쉬워요: 바로 저장하고 마지막 화면으로
+      saveWalkAndFeedback(selectedRoute, walkStats, -1, []);
+      goToSlide(3);
+    }
+  };
+
+  // ⭐ Slide3에서 태그 선택 시 호출됨
+  const handleSelectTags = (tags) => {
+    setSelectedTags(tags);
+    console.log("선택된 태그:", tags);
+  };
+
+  // ⭐ 카테고리 선택 완료하고 다음으로 넘어가는 함수
+  const handleConfirmTags = () => {
+    saveWalkAndFeedback(selectedRoute, walkStats, 1, selectedTags);
+    goToSlide(3);
+  };
 
   const onScroll = (e) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -91,11 +150,14 @@ export default function WalkReviewScreen({
           />
 
           <WalkReviewSlide2
-            onLike={() => saveWalkAndFeedback(selectedRoute, walkStats, 1)}
-            onDislike={() => saveWalkAndFeedback(selectedRoute, walkStats, -1)}
+            onLike={() => handleFeedback(1)}
+            onDislike={() => handleFeedback(-1)}
           />
 
-          <WalkReviewSlide3 />
+          <WalkReviewSlide3
+            onSelectTags={handleSelectTags}
+            onConfirm={handleConfirmTags}  // ⭐ 확인 버튼 콜백 전달
+          />
 
           <WalkReviewSlide4 onGoHome={onGoHome} />
         </ScrollView>
