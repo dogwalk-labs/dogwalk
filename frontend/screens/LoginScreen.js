@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "900",
     color: TEXT,
-    marginBottom: 18,
+    marginBottom: 10, 
   },
   inputWrap: {
     width: "100%",

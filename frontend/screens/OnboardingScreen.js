@@ -7,6 +7,9 @@ import OnboardingSlide2 from "./OnboardingSlide2";
 import OnboardingSlide3 from "./OnboardingSlide3";
 import LoginScreen from "./LoginScreen";
 import RegisterScreen from "./RegisterScreen";
+import ProfileRequiredScreen from "./ProfileRequiredScreen";
+import UserProfileFormScreen from "./UserProfileFormScreen";
+import DogProfileFormScreen from "./DogProfileFormScreen";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";
@@ -81,7 +84,7 @@ export default function OnboardingScreen({ navigation }) {
               email: data.email,
               nickname: data.nickname,
             });
-            navigation.replace("MainTabs");
+            setActiveView("profileRequired");
           } catch {
             Alert.alert("오류", "네트워크 오류가 발생했습니다.");
           } finally {
@@ -110,7 +113,7 @@ export default function OnboardingScreen({ navigation }) {
           setSignupSubmitting(true);
 
           try {
-            // 디버깅용 로그 추가
+            //디버깅용 로그 추가
             // console.log("회원가입 요청 payload:", {
             //   email: payload.email.trim(),
             //   password: payload.password,
@@ -153,6 +156,26 @@ export default function OnboardingScreen({ navigation }) {
             setSignupSubmitting(false);
           }
         }}
+      />
+    );
+  }
+
+  if (activeView === "profileRequired") {
+    return (
+      <ProfileRequiredScreen
+        onCreateProfilePress={() => setActiveView("userProfileForm")}
+      />
+    );
+  }
+
+  if (activeView === "userProfileForm") {
+    return <UserProfileFormScreen onNextPress={() => setActiveView("dogProfileForm")} />;
+  }
+
+  if (activeView === "dogProfileForm") {
+    return (
+      <DogProfileFormScreen
+        onCompletePress={() => navigation.replace("MainTabs")}
       />
     );
   }
