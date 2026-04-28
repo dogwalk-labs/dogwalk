@@ -67,7 +67,10 @@ export default function LoginScreen({
               placeholder="이메일을 입력해주세요"
               placeholderTextColor="#BDBDBD"
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
               keyboardType="email-address"
+              underlineColorAndroid="transparent"
             />
           </View>
 

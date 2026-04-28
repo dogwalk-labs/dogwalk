@@ -13,6 +13,7 @@ import OnboardingScreen from "./screens/OnboardingScreen";
 import RankingScreen from "./screens/RankingScreen";
 import CommunityScreen from "./screens/CommunityScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import ProfileEditScreen from "./screens/ProfileEditScreen";
 
 import BottomTabBar from "./components/BottomTabBar";
 import { API_BASE_URL } from "./config/config";
@@ -42,8 +43,17 @@ function MainTabs() {
       <Tab.Screen name="Ranking" component={RankingScreen} />
       <Tab.Screen name="Walk" component={WalkStack} />
       <Tab.Screen name="Community" component={CommunityScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
+  );
+}
+
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+    </Stack.Navigator>
   );
 }
 
