@@ -43,6 +43,10 @@ export default function OnboardingScreen({ navigation }) {
     if (index !== currentIndex) setCurrentIndex(index);
   };
 
+  const goToSlide = (index) => {
+    scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+  };
+
   useEffect(() => {
     if (activeView !== "onboarding") return;
     if (currentIndex !== 2) return;
@@ -187,12 +191,12 @@ export default function OnboardingScreen({ navigation }) {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
+        onMomentumScrollEnd={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
       >
-        <OnboardingSlide1 />
-        <OnboardingSlide2 />
+        <OnboardingSlide1 onNextPress={() => goToSlide(1)} />
+        <OnboardingSlide2 onNextPress={() => goToSlide(2)} />
         <OnboardingSlide3
           onSignupPress={() => setActiveView("register")}
           onLoginPress={() => setActiveView("login")}
