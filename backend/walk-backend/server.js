@@ -1,9 +1,11 @@
 // server.js (ESM)
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
 import { recommend3 } from "./recommend.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,9 +16,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ✅ Supabase 연결
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+
+// ===================================================
+// 🔥 1. 추천 API (DB 저장 ❌)
+// ===================================================
 app.post("/recommend", async (req, res) => {
   console.log("RECOMMEND HIT", new Date().toISOString(), req.body);
-  console.time("RECOMMEND");
 
   try {
     const { start, minutes, userId, bannedRouteIds, count, tags } = req.body ?? {};
@@ -33,24 +44,15 @@ app.post("/recommend", async (req, res) => {
       return res.status(400).json({ error: "minutes 필요" });
     }
 
-    const m = Number(minutes);
-    const uid = userId ?? "anon";
-
-    const c = Number.isFinite(Number(count))
-      ? Math.max(1, Math.min(3, Math.floor(Number(count))))
-      : 3;
-
-    const banned = Array.isArray(bannedRouteIds) ? bannedRouteIds : [];
-
     const routes = await recommend3({
       start: {
         lat: Math.round(Number(start.lat) * 10000) / 10000,
         lng: Math.round(Number(start.lng) * 10000) / 10000,
       },
-      minutes: m,
-      userId: uid,
-      count: c,
-      bannedRouteIds: banned,
+      minutes: Number(minutes),
+      userId: userId ?? "anon",
+      count: count ?? 3,
+      bannedRouteIds: Array.isArray(bannedRouteIds) ? bannedRouteIds : [],
       tags: Array.isArray(tags) ? tags : [],
     });
 
@@ -62,57 +64,56 @@ app.post("/recommend", async (req, res) => {
     return res.status(500).json({
       error: e?.message || "recommend failed",
     });
-  } finally {
-    console.timeEnd("RECOMMEND");
   }
 });
 
 
-app.get("/routes/recommend", async (req, res) => {
-  console.time("RECOMMEND_GET");
-
+// ===================================================
+// 🔥 2. 좋아요/아쉬워요 API (여기서만 DB 저장)
+// ===================================================
+app.post("/feedback", async (req, res) => {
   try {
-    const time = Number(req.query.time);
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
-    const userId = String(req.query.userId ?? "anon");
+    const { route, category, liked } = req.body;
 
-    const cRaw = Number(req.query.count);
-    const c = Number.isFinite(cRaw)
-      ? Math.max(1, Math.min(3, Math.floor(cRaw)))
-      : 3;
-
-    if (
-      !Number.isFinite(time) ||
-      time <= 0 ||
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
-      return res.status(400).json({ error: "query로 time, lat, lng 필요" });
+    if (!route) {
+      return res.status(400).json({ error: "route 필요" });
     }
 
-    const routes = await recommend3({
-      start: { lat, lng },
-      minutes: time,
-      userId,
-      count: c,
-      bannedRouteIds: [],
+    // 👎면 저장 안함
+    if (!liked) {
+      return res.json({ ok: true, message: "skip save" });
+    }
+
+    const { error } = await supabase.from("paths").insert({
+      route_id: route.routeId,
+      user_id: route.userId === "anon" ? null : route.userId,
+      minutes: route.minutes,
+      distance_m: route.distanceM,
+      duration_sec: route.durationSec,
+      geometry_json: route.geometry,
+      meta: {
+        category: category, // 👈 핵심
+        title: route.title,
+        traits: route.traits,
+        explanation: route.explanation,
+      },
     });
 
-    return res.json({
-      routes: Array.isArray(routes) ? routes : [],
-    });
+    if (error) throw error;
+
+    console.log("👍 좋아요 경로 저장 완료");
+
+    return res.json({ ok: true });
   } catch (e) {
-    console.error("GET /routes/recommend error:", e);
-    return res.status(500).json({
-      error: e?.message || "recommend failed",
-    });
-  } finally {
-    console.timeEnd("RECOMMEND_GET");
+    console.error("feedback error:", e);
+    return res.status(500).json({ error: e.message });
   }
 });
 
-// POI JSON API
+
+// ===================================================
+// POI API
+// ===================================================
 app.get("/pois", (req, res) => {
   try {
     const poisPath = path.join(__dirname, "data", "pois.manual.json");
@@ -133,12 +134,14 @@ app.get("/pois", (req, res) => {
   }
 });
 
+
+// ===================================================
+// 헬스체크
+// ===================================================
 app.get("/health", (_, res) => {
   res.json({
     ok: true,
     message: "backend is running",
-    osrmBaseUrl: process.env.OSRM_BASE_URL || "http://localhost:5000",
-    osrmProfile: process.env.OSRM_PROFILE || "foot",
   });
 });
 
