@@ -1,248 +1,295 @@
+// recommend.js (ESM 완전체 - Trip API 순환 경로 버전)
 import crypto from "crypto";
 
 const OSRM_BASE = process.env.OSRM_BASE_URL || "http://localhost:5000";
-const PROFILE = "foot";
+const OSRM_PROFILE = process.env.OSRM_PROFILE || "foot";
 
-const PACE_M_PER_MIN = Number(process.env.PACE_M_PER_MIN || 80);
-
+const PACE_M_PER_MIN = 80; // 1분당 80m
 const fetchFn = global.fetch;
-
-/* ---------------- util ---------------- */
-
-// ⭐ 좌표 반올림 함수 (소수점 4자리 = 약 11m 단위)
-function roundCoord(coord) {
-  return Math.round(coord * 10000) / 10000;
+if (!fetchFn) {
+  throw new Error("fetch is not available. Use Node 18+ (recommended Node 18/20/22).");
 }
 
-function routeId(geometry) {
-  const rounded = geometry.coordinates.map(([lng, lat]) => [
-    Math.round(lng * 10000) / 10000,
-    Math.round(lat * 10000) / 10000,
-  ]);
-
-  return crypto
-    .createHash("sha1")
-    .update(JSON.stringify(rounded))
-    .digest("hex");
+/* ------------------------------
+   🔥 geometry 기반 고정 routeId
+--------------------------------*/
+function makeDeterministicRouteId(geometry) {
+  const coordsStr = JSON.stringify(geometry?.coordinates ?? []);
+  return crypto.createHash("sha1").update(coordsStr).digest("hex");
 }
 
-function waypoint(start, meters, deg) {
+/* ------------------------------
+   waypoint 생성
+--------------------------------*/
+function makeWaypoint(start, meters, deg) {
   const rad = (deg * Math.PI) / 180;
-
   const dLat = (meters * Math.cos(rad)) / 111320;
-
   const dLng =
-    (meters * Math.sin(rad)) /
-    (111320 * Math.cos((start.lat * Math.PI) / 180));
-
-  return {
-    lat: start.lat + dLat,
-    lng: start.lng + dLng,
-  };
+    (meters * Math.sin(rad)) / (111320 * Math.cos((start.lat * Math.PI) / 180));
+  return { lat: start.lat + dLat, lng: start.lng + dLng };
 }
 
-// 두 좌표 사이 거리 (Haversine, meters)
-function haversine(a, b) {
-  const R = 6371000;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+/* ------------------------------
+   geometry downsample
+--------------------------------*/
+function downsampleGeoJSON(geo, maxPoints = 500) {
+  const coords = geo?.coordinates;
+  if (!Array.isArray(coords) || coords.length <= maxPoints) return geo;
+
+  const step = Math.ceil(coords.length / maxPoints);
+  const sampled = [];
+  for (let i = 0; i < coords.length; i += step) sampled.push(coords[i]);
+
+  const last = coords[coords.length - 1];
+  const tail = sampled[sampled.length - 1];
+  if (!tail || tail[0] !== last[0] || tail[1] !== last[1]) sampled.push(last);
+
+  return { ...geo, coordinates: sampled };
 }
 
-// 거리(m) → 분 (도보 페이스 기준)
-function metersToMinutes(m) {
-  return m / PACE_M_PER_MIN;
-}
+/* ------------------------------
+   ✅ Trip API 기반 순환 경로
+   /trip API: OSRM이 TSP로 자동 순환 경로 생성
+   - 출발점 고정 (source=first, destination=last, roundtrip=true)
+   - 같은 길 되돌아오는 현상 방지
+   - waypoint 3개로 삼각형 형태 유도 (120도 간격)
+--------------------------------*/
+async function fetchRoundTrip(start, deg, oneWayM, timeoutMs = 8000) {
+  const wp1 = makeWaypoint(start, oneWayM, deg);
+  const wp2 = makeWaypoint(start, oneWayM * 0.9, (deg + 120) % 360);
+  const wp3 = makeWaypoint(start, oneWayM * 0.9, (deg + 240) % 360);
 
-// `lng,lat;lng,lat;...` 직렬화
-function coordsToParam(points) {
-  return points.map((p) => `${p.lng},${p.lat}`).join(";");
-}
+  const coords = [
+    `${start.lng},${start.lat}`,
+    `${wp1.lng},${wp1.lat}`,
+    `${wp2.lng},${wp2.lat}`,
+    `${wp3.lng},${wp3.lat}`,
+  ].join(";");
 
-/* ---------------- OSRM 호출 ---------------- */
-
-async function osrmRoute(points) {
-  const coords = coordsToParam(points);
+  // /trip API: TSP 기반 순환 경로 — 같은 길 되돌아오지 않음
   const url =
-    `${OSRM_BASE}/route/v1/${PROFILE}/${coords}` +
-    `?overview=full&geometries=geojson&steps=false&alternatives=false`;
+    `${OSRM_BASE}/trip/v1/${OSRM_PROFILE}/${coords}` +
+    `?overview=full&geometries=geojson&steps=false&source=first&destination=last&roundtrip=true`;
 
-  const res = await fetchFn(url);
-  if (!res.ok) {
-    throw new Error(`OSRM route failed: ${res.status}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetchFn(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`OSRM trip error ${res.status}`);
+    const json = await res.json();
+
+    if (json.code !== "Ok") throw new Error(`OSRM trip: ${json.code}`);
+
+    // /trip 응답은 trips[] 배열
+    const trip = json?.trips?.[0];
+    if (!trip) throw new Error("OSRM: no trip");
+    return trip;
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  if (data.code !== "Ok" || !data.routes?.length) {
-    throw new Error(`OSRM route error: ${data.code || "unknown"}`);
+}
+
+/* ------------------------------
+   분석 로직
+--------------------------------*/
+function wrapAngleDiff(before, after) {
+  return Math.abs(((after - before + 540) % 360) - 180);
+}
+
+function bearingDeg(a, b) {
+  const [lng1, lat1] = a;
+  const [lng2, lat2] = b;
+  const y =
+    Math.sin(((lng2 - lng1) * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180);
+  const x =
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.sin((lat2 * Math.PI) / 180) -
+    Math.sin((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.cos(((lng2 - lng1) * Math.PI) / 180);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return (brng + 360) % 360;
+}
+
+function analyzeRouteOsrm(route) {
+  const totalDistanceM = Number(route.distance ?? 0);
+  const distanceKm = Math.max(0.001, totalDistanceM / 1000);
+
+  const coords = route?.geometry?.coordinates ?? [];
+  let turnCount = 0;
+  let sharpTurnCount = 0;
+
+  const stride = 6;
+  let prevBearing = null;
+
+  for (let i = 0; i + stride < coords.length; i += stride) {
+    const a = coords[i];
+    const b = coords[i + stride];
+    if (!a || !b) continue;
+
+    const br = bearingDeg(a, b);
+    if (prevBearing != null) {
+      const diff = wrapAngleDiff(prevBearing, br);
+      if (diff >= 25) turnCount++;
+      if (diff >= 60) sharpTurnCount++;
+    }
+    prevBearing = br;
   }
-  return data.routes[0];
-}
 
-async function osrmNearest(point) {
-  const url = `${OSRM_BASE}/nearest/v1/${PROFILE}/${point.lng},${point.lat}?number=1`;
-  const res = await fetchFn(url);
-  if (!res.ok) throw new Error(`OSRM nearest failed: ${res.status}`);
-  const data = await res.json();
-  if (data.code !== "Ok" || !data.waypoints?.length) {
-    throw new Error(`OSRM nearest error: ${data.code || "unknown"}`);
-  }
-  const [lng, lat] = data.waypoints[0].location;
-  return { lat, lng };
-}
+  const turnsPerKm = turnCount / distanceKm;
+  const sharpTurnRatio = turnCount ? sharpTurnCount / turnCount : 0;
 
-/* ---------------- 후보 루프 생성 ---------------- */
+  const tags = [];
+  let streetTag = "혼합형";
+  if (turnsPerKm > 12) streetTag = "골목 많음";
+  else if (turnsPerKm < 6) streetTag = "큰길 위주";
+  tags.push(streetTag);
 
-/**
- * 한 방위각으로 왕복 루프 후보 1개 생성.
- * start → turn(방위각 deg, 반경 r) → start
- */
-async function buildLoopCandidate(start, targetMeters, deg) {
-  // 직선거리 기준 turn까지 갔다오면 도로 굴곡으로 실제 거리가 길어지므로
-  // 목표의 절반보다 작게 잡는다 (계수 0.6).
-  const r = (targetMeters / 2) * 0.6;
-  const turn = waypoint(start, r, deg);
+  if (sharpTurnRatio > 0.25) tags.push("방향전환 큼");
+  else tags.push("동선 단순");
 
-  const snapped = await osrmNearest(turn).catch(() => null);
-  if (!snapped) return null;
-
-  const route = await osrmRoute([start, snapped, start]).catch(() => null);
-  if (!route) return null;
-
-  return { deg, route, turn: snapped };
-}
-
-/* ---------------- 점수화 ---------------- */
-
-/**
- * 후보 루트에 점수를 매긴다 (0~1, 높을수록 좋음).
- * - 거리 적합도: 목표 거리에 가까울수록 +
- * - 다양성: 다른 후보와 방위각이 멀수록 +
- * - 직선성 페널티: 너무 직선이면 - (왕복 산책으로 부적절)
- */
-function scoreCandidates(candidates, targetMeters) {
-  if (!candidates.length) return [];
-
-  return candidates.map((c) => {
-    const dist = c.route.distance;
-
-    // 거리 적합도: 목표 대비 오차 비율
-    const err = Math.abs(dist - targetMeters) / targetMeters;
-    const distScore = Math.max(0, 1 - err); // 오차 100%면 0
-
-    // 직선성: 시작점-끝점 직선거리 / 전체 거리
-    // 루프라 시작=끝이지만, 경로 중간점과 시작점의 직선거리 비율로 근사
-    const coords = c.route.geometry.coordinates;
-    const mid = coords[Math.floor(coords.length / 2)];
-    const startPt = { lat: coords[0][1], lng: coords[0][0] };
-    const midPt = { lat: mid[1], lng: mid[0] };
-    const straightness = (haversine(startPt, midPt) * 2) / dist;
-    // 0.95 이상이면 거의 직선 왕복 → 페널티
-    const loopScore = straightness > 0.95 ? 0.5 : 1;
-
-    const score = distScore * 0.8 + loopScore * 0.2;
-    return { ...c, score, distanceMeters: Math.round(dist) };
-  });
-}
-
-/**
- * 상위 후보들 중 방위각이 너무 가까운 건 제거 (다양성 확보).
- */
-function diversify(scored, { minDegGap = 45 } = {}) {
-  const sorted = [...scored].sort((a, b) => b.score - a.score);
-  const picked = [];
-
-  for (const c of sorted) {
-    const tooClose = picked.some((p) => {
-      const d = Math.abs(p.deg - c.deg);
-      const gap = Math.min(d, 360 - d);
-      return gap < minDegGap;
-    });
-    if (!tooClose) picked.push(c);
-  }
-  return picked;
-}
-
-/* ---------------- 정규화 ---------------- */
-
-function normalizeRoute(c, targetMeters) {
-  const dist = c.route.distance;
   return {
-    id: routeId(c.route.geometry),
-    type: "loop",
-    bearing: c.deg,
-    targetMeters,
-    distanceMeters: Math.round(dist),
-    durationMinutes: Math.round(metersToMinutes(dist) * 10) / 10,
-    score: Math.round(c.score * 1000) / 1000,
-    geometry: c.route.geometry,
+    tags,
+    explanation: "출발지로 돌아오는 루트입니다.",
   };
 }
 
-/* ---------------- public API ---------------- */
-
-/**
- * 출발지 + 목표 거리(m) 기반 도보 루트 추천.
- *
- * @param {{lat:number,lng:number}} start
- * @param {number} targetMeters - 원하는 루트 길이 (왕복)
- * @param {object} [opts]
- * @param {number} [opts.samples=12] - 시도할 방위각 개수
- * @param {number} [opts.limit=3]    - 반환할 상위 추천 개수
- * @param {number} [opts.minDegGap=45] - 추천 간 최소 방위각 차이
- * @returns {Promise<Array>} 추천 루트 배열 (점수 내림차순)
- */
-export async function recommend(start, targetMeters, opts = {}) {
-  const { samples = 12, limit = 3, minDegGap = 45 } = opts;
-
-  if (!start || typeof start.lat !== "number" || typeof start.lng !== "number") {
-    throw new Error("start must be {lat, lng}");
-  }
-  if (!Number.isFinite(targetMeters) || targetMeters <= 0) {
-    throw new Error("targetMeters must be a positive number");
-  }
-
-  // 출발지를 도로망에 스냅
-  const snappedStart = await osrmNearest(start);
-
-  // 모든 방위각 후보를 병렬로 시도
-  const tasks = [];
-  for (let i = 0; i < samples; i++) {
-    const deg = (360 / samples) * i;
-    tasks.push(buildLoopCandidate(snappedStart, targetMeters, deg));
-  }
-  const results = (await Promise.all(tasks)).filter(Boolean);
-
-  if (!results.length) {
-    return [];
-  }
-
-  // 점수 매기고 다양성 확보 후 상위 N개
-  const scored = scoreCandidates(results, targetMeters);
-  const diverse = diversify(scored, { minDegGap });
-
-  return diverse.slice(0, limit).map((c) => normalizeRoute(c, targetMeters));
+/* ------------------------------
+   각도 배열 생성
+--------------------------------*/
+function makeDegs(stepDeg) {
+  const out = [];
+  for (let deg = 0; deg < 360; deg += stepDeg) out.push(deg);
+  return out;
 }
 
-/**
- * 시간(분) 기반 추천 — targetMeters 대신 분 단위로 받고 싶을 때.
- */
-export async function recommendByMinutes(start, minutes, opts) {
-  const targetMeters = minutes * PACE_M_PER_MIN;
-  return recommend(start, targetMeters, opts);
+/* ===================================================
+   🔥 최종 recommend3
+   - /trip API 기반 순환 경로 (왕복 겹침 완전 해결)
+   - waypoint 3개 삼각형 구조 (120도 간격)
+   - count 옵션 (1~3)
+   - deterministic routeId
+   - bannedRouteIds 지원
+   - 비슷한 방향 중복 제거 (45도 이내)
+=================================================== */
+async function recommend3({
+  start,
+  minutes,
+  userId = "anon",
+  count = 3,
+  bannedRouteIds = [],
+}) {
+  const cRaw = Number(count);
+  const c = Number.isFinite(cRaw) ? Math.max(1, Math.min(3, Math.floor(cRaw))) : 3;
+
+  const banned = new Set(
+    Array.isArray(bannedRouteIds)
+      ? bannedRouteIds.filter((x) => typeof x === "string" && x.length > 0)
+      : []
+  );
+
+  const targetSec = minutes * 60;
+  const targetM = minutes * PACE_M_PER_MIN;
+
+  // 삼각형 3개 꼭짓점 → 전체 둘레가 targetM에 맞도록 oneWayM 조정
+  const oneWayM = Math.max(300, Math.min(targetM / 3, 1500));
+
+  const stepPlan = [60, 30, 20];
+  const results = [];
+  const tried = new Set();
+
+  for (const stepDeg of stepPlan) {
+    const degs = makeDegs(stepDeg).filter((d) => !tried.has(d));
+    degs.forEach((d) => tried.add(d));
+
+    await Promise.allSettled(
+      degs.map(async (deg) => {
+        try {
+          const route = await fetchRoundTrip(start, deg, oneWayM);
+
+          const distanceM = Number(route.distance ?? 0);
+          const osrmSec = Number(route.duration ?? 0);
+          const paceSec = (distanceM / PACE_M_PER_MIN) * 60;
+          const durationSec = osrmSec > 0 ? osrmSec : paceSec;
+
+          const timeDiff = Math.abs(durationSec - targetSec);
+          const distDiff = Math.abs(distanceM - targetM);
+          const score = timeDiff * 1.2 + distDiff * 0.08;
+
+          const traits = analyzeRouteOsrm(route);
+          const geometry = downsampleGeoJSON(route.geometry, 500);
+
+          const routeId = makeDeterministicRouteId(geometry);
+          if (banned.has(routeId)) return;
+
+          // 비슷한 방향(45도 이내) 중복 제거
+          const tooSimilar = results.some(
+            (r) => Math.abs(((r.deg - deg + 540) % 360) - 180) < 45
+          );
+          if (tooSimilar) return;
+
+          results.push({
+            deg,
+            score,
+            durationSec,
+            distanceM,
+            geometry,
+            traits,
+            routeId,
+          });
+        } catch {
+          // ignore
+        }
+      })
+    );
+
+    const pool = results
+      .filter(
+        (r) =>
+          r.durationSec >= targetSec * 0.7 &&
+          r.durationSec <= targetSec * 1.35
+      )
+      .sort((a, b) => a.score - b.score);
+
+    if (pool.length >= c) {
+      return pool.slice(0, c).map((r, idx) => ({
+        routeId: r.routeId,
+        userId,
+        minutes,
+        deg: r.deg,
+        oneWayM,
+        title: `${minutes}분 산책 추천 ${idx + 1}`,
+        durationSec: Math.round(r.durationSec),
+        distanceM: Math.round(r.distanceM),
+        geometry: r.geometry,
+        traits: r.traits,
+        explanation: r.traits.explanation,
+      }));
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error("No routes (OSRM/네트워크 확인)");
+  }
+
+  return results
+    .sort((a, b) => a.score - b.score)
+    .slice(0, c)
+    .map((r, idx) => ({
+      routeId: r.routeId,
+      userId,
+      minutes,
+      deg: r.deg,
+      oneWayM,
+      title: `${minutes}분 산책 추천 ${idx + 1}`,
+      durationSec: Math.round(r.durationSec),
+      distanceM: Math.round(r.distanceM),
+      geometry: r.geometry,
+      traits: r.traits,
+      explanation: r.traits.explanation,
+    }));
 }
 
-export {
-  roundCoord,
-  routeId,
-  waypoint,
-  haversine,
-  metersToMinutes,
-  osrmRoute,
-  osrmNearest,
-};
+export { recommend3, analyzeRouteOsrm, makeDeterministicRouteId };
