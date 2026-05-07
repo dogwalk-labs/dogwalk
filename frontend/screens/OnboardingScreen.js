@@ -85,18 +85,33 @@ export default function OnboardingScreen({ navigation }) {
               );
               return;
             }
+
             await saveAuthSession({
               access_token: data.access_token,
               id: data.id,
               email: data.email,
               nickname: data.nickname,
             });
-            setActiveView("profileRequired");
-          } catch {
-            Alert.alert("오류", "네트워크 오류가 발생했습니다.");
-          } finally {
-            setLoginSubmitting(false);
-          }
+
+            const profileRes = await fetch(
+              `${API_BASE_URL}/profiles/me/${data.id}`
+            );
+
+            const profileData = await profileRes.json();
+
+            console.log("profile check:", profileData);
+
+            if (profileData?.user_profile && profileData?.dog) {
+              navigation.replace("MainTabs");
+            } else {
+              setActiveView("profileRequired");
+            }
+
+            } catch {
+              Alert.alert("오류", "네트워크 오류가 발생했습니다.");
+            } finally {
+              setLoginSubmitting(false);
+            }
         }}
         onSignupPress={() => {
           setActiveView("register");

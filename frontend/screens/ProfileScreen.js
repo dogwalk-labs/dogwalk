@@ -1,9 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/config";
+import { getCurrentUser } from "../auth/authStorage";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  const [profile, setProfile] = useState(null);
+
+   useEffect(() => {
+     const loadProfile = async () => {
+       try {
+         const user = await getCurrentUser();
+
+         if (!user) return;
+
+         const res = await fetch(
+           `${API_BASE_URL}/profiles/me/${user.id}`
+         );
+
+         const data = await res.json();
+
+         console.log("profile data:", data);
+
+         setProfile(data);
+       } catch (e) {
+         console.log(e);
+       }
+     };
+
+     loadProfile();
+   }, []);
+
 
   return (
     <View style={styles.container}>
@@ -21,9 +49,17 @@ export default function ProfileScreen() {
             <View style={styles.avatarBody} />
           </View>
           <View style={styles.cardContent}>
-            <Text style={styles.nameText}>둥이누나</Text>
-            <Text style={styles.infoText}>여자 / 22세</Text>
-            <Text style={styles.infoText}>010-1234-5678</Text>
+           <Text style={styles.nameText}>
+             {profile?.user_profile?.nickname ?? "닉네임"}
+           </Text>
+            <Text style={styles.infoText}>
+              {profile?.user_profile?.gender === "female" ? "여자" : "남자"}
+              {" / "}
+              {profile?.user_profile?.age ?? "-"}세
+            </Text>
+            <Text style={styles.infoText}>
+              {profile?.user_profile?.emergency_contact ?? "-"}
+            </Text>
             <TouchableOpacity
               style={styles.editButton}
               activeOpacity={0.8}
@@ -42,8 +78,14 @@ export default function ProfileScreen() {
             </View>
           </View>
           <View style={styles.cardContent}>
-            <Text style={styles.nameText}>둥이</Text>
-            <Text style={styles.infoText}>수컷(12세) / 말티즈</Text>
+            <Text style={styles.nameText}>
+              {profile?.dog?.name ?? "반려견"}
+            </Text>
+            <Text style={styles.infoText}>
+              {profile?.dog?.gender === "female" ? "암컷" : "수컷"}
+              ({profile?.dog?.age ?? "-"}세) /{" "}
+              {profile?.dog?.breed ?? "-"}
+            </Text>
             <TouchableOpacity
               style={styles.editButton}
               activeOpacity={0.8}

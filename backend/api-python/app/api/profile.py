@@ -53,3 +53,31 @@ def create_dog(payload: DogRequest, db: Session = Depends(get_db)):
 
     return {"ok": True}
 
+
+@router.get("/me/{user_id}")
+def get_my_profile(user_id: str, db: Session = Depends(get_db)):
+    user_profile = db.execute(
+        text("""
+            SELECT nickname, age, gender, emergency_contact
+            FROM user_profiles
+            WHERE user_id = :user_id
+            LIMIT 1
+        """),
+        {"user_id": user_id},
+    ).mappings().fetchone()
+
+    dog = db.execute(
+        text("""
+            SELECT name, age, gender, breed
+            FROM dogs
+            WHERE user_id = :user_id
+            LIMIT 1
+        """),
+        {"user_id": user_id},
+    ).mappings().fetchone()
+
+    return {
+        "user_profile": dict(user_profile) if user_profile else None,
+        "dog": dict(dog) if dog else None,
+    }
+
