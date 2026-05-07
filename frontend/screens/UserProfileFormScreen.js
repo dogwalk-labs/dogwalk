@@ -118,7 +118,14 @@ export default function UserProfileFormScreen({ onNextPress }) {
               !canSubmit && styles.submitButtonDisabled,
               pressed && canSubmit && styles.buttonPressed,
             ]}
-            onPress={onNextPress}
+            onPress={() =>
+              onNextPress?.({
+                nickname,
+                age,
+                gender,
+                emergencyContact,
+              })
+            }
           >
             <Text style={styles.submitButtonText}>반려견 프로필 생성</Text>
           </Pressable>

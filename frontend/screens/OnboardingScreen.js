@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, ScrollView, Dimensions, Text, Alert } from "react-native";
 import { API_BASE_URL } from "../config/config";
-import { saveAuthSession } from "../auth/authStorage";
+import {
+  saveAuthSession,
+  getCurrentUser,
+} from "../auth/authStorage";
 import OnboardingSlide1 from "./OnboardingSlide1";
 import OnboardingSlide2 from "./OnboardingSlide2";
 import OnboardingSlide3 from "./OnboardingSlide3";
@@ -172,17 +175,81 @@ export default function OnboardingScreen({ navigation }) {
     );
   }
 
-  if (activeView === "userProfileForm") {
-    return <UserProfileFormScreen onNextPress={() => setActiveView("dogProfileForm")} />;
-  }
+    if (activeView === "userProfileForm") {
+      return (
+        <UserProfileFormScreen
+          onNextPress={async (payload) => {
+            try {
+              const user = await getCurrentUser();
 
-  if (activeView === "dogProfileForm") {
-    return (
-      <DogProfileFormScreen
-        onCompletePress={() => navigation.replace("MainTabs")}
-      />
-    );
-  }
+              const res = await fetch(`${API_BASE_URL}/profiles/user`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  user_id: user.id,
+                  nickname: payload.nickname,
+                  age: Number(payload.age),
+                  gender: payload.gender,
+                  emergency_contact: payload.emergencyContact,
+                }),
+              });
+
+              const data = await res.json();
+
+              console.log("user profile result:", data);
+
+              setActiveView("dogProfileForm");
+            } catch (e) {
+              console.log(e);
+              Alert.alert("오류", "사용자 정보 저장 실패");
+            }
+          }}
+        />
+      );
+    }
+
+    if (activeView === "dogProfileForm") {
+      return (
+        <DogProfileFormScreen
+          onCompletePress={async (payload) => {
+            try {
+              const user = await getCurrentUser();
+
+              const res = await fetch(`${API_BASE_URL}/profiles/dog`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  user_id: user.id,
+                  name: payload.name,
+                  age: Number(payload.age),
+                  gender: payload.gender,
+                  breed: payload.breed,
+                }),
+              });
+
+              const data = await res.json();
+
+              console.log("dog profile result:", data);
+
+              if (!res.ok) {
+                Alert.alert("오류", "반려견 정보 저장 실패");
+                return;
+              }
+
+              navigation.replace("MainTabs");
+            } catch (e) {
+              console.log(e);
+              Alert.alert("오류", "반려견 정보 저장 실패");
+            }
+          }}
+        />
+      );
+    }
+
 
   return (
     <View style={styles.container}>

@@ -22,3 +22,11 @@ export async function clearAuthSession() {
 export async function getAccessToken() {
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
+
+export async function getCurrentUser() {
+  const raw = await SecureStore.getItemAsync(USER_KEY);
+
+  if (!raw) return null;
+
+  return JSON.parse(raw);
+}

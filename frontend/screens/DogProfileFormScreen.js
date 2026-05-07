@@ -117,7 +117,14 @@ export default function DogProfileFormScreen({ onCompletePress }) {
               !canSubmit && styles.submitButtonDisabled,
               pressed && canSubmit && styles.buttonPressed,
             ]}
-            onPress={onCompletePress}
+            onPress={() =>
+              onCompletePress?.({
+                name,
+                age,
+                gender,
+                breed,
+              })
+            }
           >
             <Text style={styles.submitButtonText}>프로필 생성</Text>
           </Pressable>

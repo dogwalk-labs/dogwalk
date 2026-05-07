@@ -157,6 +157,7 @@ export default function RegisterScreen({ onBack, onSignupPress, submitting }) {
                   (!canSubmit || submitting) && styles.signupButtonDisabled,
                   pressed && canSubmit && !submitting && styles.buttonPressed,
                 ]}
+
                 onPress={() =>
                   onSignupPress?.({
                     email,

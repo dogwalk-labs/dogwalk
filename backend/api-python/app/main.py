@@ -7,8 +7,11 @@ from app.api.paths import router as paths_router
 from app.api.recommend_routes import router as recommend_router
 from app.api.users import router as users_router
 from app.core.config import CORS_ALLOW_ORIGINS
+from app.api.profile import router as profile_router
+
 
 app = FastAPI(title="dogwalk api")
+app.include_router(profile_router)
 
 origins = ["*"] if CORS_ALLOW_ORIGINS == "*" else [x.strip() for x in CORS_ALLOW_ORIGINS.split(",")]
 
