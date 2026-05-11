@@ -54,22 +54,25 @@ function downsampleGeoJSON(geo, maxPoints = 500) {
    - 같은 길 되돌아오는 현상 방지
    - waypoint 3개로 삼각형 형태 유도 (120도 간격)
 --------------------------------*/
-async function fetchRoundTrip(start, deg, oneWayM, timeoutMs = 8000) {
-  const wp1 = makeWaypoint(start, oneWayM, deg);
-  const wp2 = makeWaypoint(start, oneWayM * 0.9, (deg + 120) % 360);
-  const wp3 = makeWaypoint(start, oneWayM * 0.9, (deg + 240) % 360);
+async function fetchRoundTrip(start, deg, radiusM, timeoutMs = 8000) {
+  // ✅ 삼각형 대신 오각형 루프
+  const points = [];
+
+  const loopCount = 5; // 5각형. 더 원형 느낌 원하면 6도 가능
+
+  for (let i = 0; i < loopCount; i++) {
+    const angle = (deg + i * (360 / loopCount)) % 360;
+    points.push(makeWaypoint(start, radiusM, angle));
+  }
 
   const coords = [
     `${start.lng},${start.lat}`,
-    `${wp1.lng},${wp1.lat}`,
-    `${wp2.lng},${wp2.lat}`,
-    `${wp3.lng},${wp3.lat}`,
+    ...points.map((p) => `${p.lng},${p.lat}`),
   ].join(";");
 
-  // /trip API: TSP 기반 순환 경로 — 같은 길 되돌아오지 않음
   const url =
     `${OSRM_BASE}/trip/v1/${OSRM_PROFILE}/${coords}` +
-    `?overview=full&geometries=geojson&steps=false&source=first&destination=last&roundtrip=true`;
+    `?overview=full&geometries=geojson&steps=false&source=first&roundtrip=true`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -77,13 +80,13 @@ async function fetchRoundTrip(start, deg, oneWayM, timeoutMs = 8000) {
   try {
     const res = await fetchFn(url, { signal: controller.signal });
     if (!res.ok) throw new Error(`OSRM trip error ${res.status}`);
-    const json = await res.json();
 
+    const json = await res.json();
     if (json.code !== "Ok") throw new Error(`OSRM trip: ${json.code}`);
 
-    // /trip 응답은 trips[] 배열
     const trip = json?.trips?.[0];
     if (!trip) throw new Error("OSRM: no trip");
+
     return trip;
   } finally {
     clearTimeout(timer);
@@ -193,8 +196,8 @@ async function recommend3({
   const targetSec = minutes * 60;
   const targetM = minutes * PACE_M_PER_MIN;
 
-  // 삼각형 3개 꼭짓점 → 전체 둘레가 targetM에 맞도록 oneWayM 조정
-  const oneWayM = Math.max(300, Math.min(targetM / 3, 1500));
+  // ✅ 원형 루프 반경
+  const loopRadiusM = Math.max(250, Math.min(targetM / 5, 900));
 
   const stepPlan = [60, 30, 20];
   const results = [];
@@ -207,7 +210,7 @@ async function recommend3({
     await Promise.allSettled(
       degs.map(async (deg) => {
         try {
-          const route = await fetchRoundTrip(start, deg, oneWayM);
+          const route = await fetchRoundTrip(start, deg, loopRadiusM);
 
           const distanceM = Number(route.distance ?? 0);
           const osrmSec = Number(route.duration ?? 0);
@@ -259,7 +262,7 @@ async function recommend3({
         userId,
         minutes,
         deg: r.deg,
-        oneWayM,
+        loopRadiusM,
         title: `${minutes}분 산책 추천 ${idx + 1}`,
         durationSec: Math.round(r.durationSec),
         distanceM: Math.round(r.distanceM),
@@ -282,7 +285,7 @@ async function recommend3({
       userId,
       minutes,
       deg: r.deg,
-      oneWayM,
+      loopRadiusM,
       title: `${minutes}분 산책 추천 ${idx + 1}`,
       durationSec: Math.round(r.durationSec),
       distanceM: Math.round(r.distanceM),
