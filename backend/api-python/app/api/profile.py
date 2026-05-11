@@ -54,6 +54,90 @@ def create_dog(payload: DogRequest, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.put("/user")
+def upsert_user_profile(payload: UserProfileRequest, db: Session = Depends(get_db)):
+    updated = db.execute(
+        text("""
+            UPDATE user_profiles
+            SET nickname = :nickname,
+                age = :age,
+                gender = :gender,
+                emergency_contact = :emergency_contact
+            WHERE user_id = :user_id
+        """),
+        {
+            "user_id": payload.user_id,
+            "nickname": payload.nickname,
+            "age": payload.age,
+            "gender": payload.gender,
+            "emergency_contact": payload.emergency_contact,
+        },
+    )
+
+    if getattr(updated, "rowcount", 0) == 0:
+        db.execute(
+            text("""
+                INSERT INTO user_profiles
+                (user_id, nickname, age, gender, emergency_contact)
+                VALUES
+                (:user_id, :nickname, :age, :gender, :emergency_contact)
+            """),
+            {
+                "user_id": payload.user_id,
+                "nickname": payload.nickname,
+                "age": payload.age,
+                "gender": payload.gender,
+                "emergency_contact": payload.emergency_contact,
+            },
+        )
+
+    db.commit()
+
+    return {"ok": True}
+
+
+@router.put("/dog")
+def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
+    updated = db.execute(
+        text("""
+            UPDATE dogs
+            SET name = :name,
+                age = :age,
+                gender = :gender,
+                breed = :breed
+            WHERE user_id = :user_id
+        """),
+        {
+            "user_id": payload.user_id,
+            "name": payload.name,
+            "age": payload.age,
+            "gender": payload.gender,
+            "breed": payload.breed,
+        },
+    )
+
+    if getattr(updated, "rowcount", 0) == 0:
+        db.execute(
+            text("""
+                INSERT INTO dogs
+                (user_id, name, age, gender, breed)
+                VALUES
+                (:user_id, :name, :age, :gender, :breed)
+            """),
+            {
+                "user_id": payload.user_id,
+                "name": payload.name,
+                "age": payload.age,
+                "gender": payload.gender,
+                "breed": payload.breed,
+            },
+        )
+
+    db.commit()
+
+    return {"ok": True}
+
+
 @router.get("/me/{user_id}")
 def get_my_profile(user_id: str, db: Session = Depends(get_db)):
     user_profile = db.execute(

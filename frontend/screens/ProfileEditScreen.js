@@ -1,5 +1,16 @@
-import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { API_BASE_URL } from "../config/config";
+import { getCurrentUser } from "../auth/authStorage";
 
 const TAB_USER = "user";
 const TAB_DOG = "dog";
@@ -11,19 +22,149 @@ const formatPhoneNumber = (value) => {
   return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
 };
 
+const genderUiToApi = (label) => {
+  if (label === "여자") return "female";
+  if (label === "남자") return "male";
+  return null;
+};
+
 export default function ProfileEditScreen({ navigation, route }) {
   const initialTab = route?.params?.initialTab === TAB_DOG ? TAB_DOG : TAB_USER;
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [userName, setUserName] = useState("둥이누나");
-  const [userAge, setUserAge] = useState("22");
-  const [userGender, setUserGender] = useState("여자");
-  const [emergencyContact, setEmergencyContact] = useState("010-1234-5678");
-  const [dogName, setDogName] = useState("둥이");
-  const [dogAge, setDogAge] = useState("7");
-  const [dogGender, setDogGender] = useState("남자");
-  const [dogBreed, setDogBreed] = useState("포메라니안");
+  const [userName, setUserName] = useState("");
+  const [userAge, setUserAge] = useState("");
+  const [userGender, setUserGender] = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+  const [dogName, setDogName] = useState("");
+  const [dogAge, setDogAge] = useState("");
+  const [dogGender, setDogGender] = useState("");
+  const [dogBreed, setDogBreed] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const hadDogFromServer = useRef(false);
 
   const isUserTab = useMemo(() => activeTab === TAB_USER, [activeTab]);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      setProfileReady(false);
+      try {
+        const user = await getCurrentUser();
+
+        if (!user) return;
+
+        const response = await fetch(`${API_BASE_URL}/profiles/me/${user.id}`);
+        const data = await response.json();
+
+        const userProfile = data?.user_profile;
+        if (userProfile) {
+          setUserName(userProfile.nickname ?? "");
+          setUserAge(userProfile.age ? String(userProfile.age) : "");
+          if (userProfile.gender === "female") setUserGender("여자");
+          else if (userProfile.gender === "male") setUserGender("남자");
+          setEmergencyContact(userProfile.emergency_contact ?? "");
+        }
+
+        const dogProfile = data?.dog;
+        hadDogFromServer.current = !!dogProfile;
+        if (dogProfile) {
+          setDogName(dogProfile.name ?? "");
+          setDogAge(dogProfile.age ? String(dogProfile.age) : "");
+          if (dogProfile.gender === "female") setDogGender("여자");
+          else if (dogProfile.gender === "male") setDogGender("남자");
+          setDogBreed(dogProfile.breed ?? "");
+        }
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setProfileReady(true);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  const handleSubmit = async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      Alert.alert("오류", "로그인 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    const nickname = userName.trim();
+    const ageNum = parseInt(userAge, 10);
+    const userGenderApi = genderUiToApi(userGender);
+    if (!nickname || !String(userAge).trim() || Number.isNaN(ageNum) || !userGenderApi || !emergencyContact.trim()) {
+      Alert.alert("입력 확인", "내 정보의 이름, 나이, 성별, 비상 연락처를 모두 입력해 주세요.");
+      return;
+    }
+
+    const shouldSaveDog = hadDogFromServer.current || dogName.trim().length > 0;
+    if (shouldSaveDog) {
+      const dogAgeNum = parseInt(dogAge, 10);
+      const dogGenderApi = genderUiToApi(dogGender);
+      const dname = dogName.trim();
+      const dbreed = dogBreed.trim();
+      if (!dname || !String(dogAge).trim() || Number.isNaN(dogAgeNum) || !dogGenderApi || !dbreed) {
+        Alert.alert("입력 확인", "반려동물의 이름, 나이, 성별, 견종을 모두 입력해 주세요.");
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const userRes = await fetch(`${API_BASE_URL}/profiles/user`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          nickname,
+          age: ageNum,
+          gender: userGenderApi,
+          emergency_contact: emergencyContact.trim(),
+        }),
+      });
+      const userErr = await userRes.json().catch(() => ({}));
+      if (!userRes.ok) {
+        const msg =
+          typeof userErr.detail === "string"
+            ? userErr.detail
+            : "사용자 정보를 저장하지 못했습니다.";
+        Alert.alert("저장 실패", msg);
+        return;
+      }
+
+      if (shouldSaveDog) {
+        const dogAgeNum = parseInt(dogAge, 10);
+        const dogGenderApi = genderUiToApi(dogGender);
+        const dogRes = await fetch(`${API_BASE_URL}/profiles/dog`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: user.id,
+            name: dogName.trim(),
+            age: dogAgeNum,
+            gender: dogGenderApi,
+            breed: dogBreed.trim(),
+          }),
+        });
+        const dogErr = await dogRes.json().catch(() => ({}));
+        if (!dogRes.ok) {
+          const msg =
+            typeof dogErr.detail === "string" ? dogErr.detail : "반려동물 정보를 저장하지 못했습니다.";
+          Alert.alert("저장 실패", msg);
+          return;
+        }
+      }
+
+      navigation.navigate("ProfileMain");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("오류", "네트워크 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -174,11 +315,16 @@ export default function ProfileEditScreen({ navigation, route }) {
         )}
 
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[styles.submitButton, saving && styles.submitButtonDisabled]}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate("ProfileMain")}
+          disabled={saving || !profileReady}
+          onPress={handleSubmit}
         >
-          <Text style={styles.submitButtonText}>수정 완료</Text>
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>수정 완료</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -373,6 +519,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 24,
     width: "78%",
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     color: "#FFFFFF",

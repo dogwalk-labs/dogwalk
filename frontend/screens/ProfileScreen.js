@@ -1,36 +1,42 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { API_BASE_URL } from "../config/config";
 import { getCurrentUser } from "../auth/authStorage";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [profile, setProfile] = useState(null);
 
-   useEffect(() => {
-     const loadProfile = async () => {
-       try {
-         const user = await getCurrentUser();
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-         if (!user) return;
+      const loadProfile = async () => {
+        try {
+          const user = await getCurrentUser();
 
-         const res = await fetch(
-           `${API_BASE_URL}/profiles/me/${user.id}`
-         );
+          if (!user) return;
 
-         const data = await res.json();
+          const res = await fetch(`${API_BASE_URL}/profiles/me/${user.id}`);
 
-         console.log("profile data:", data);
+          const data = await res.json();
 
-         setProfile(data);
-       } catch (e) {
-         console.log(e);
-       }
-     };
+          console.log("profile data:", data);
 
-     loadProfile();
-   }, []);
+          if (!cancelled) setProfile(data);
+        } catch (e) {
+          console.log(e);
+        }
+      };
+
+      loadProfile();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
 
   return (
