@@ -61,5 +61,59 @@
     "address": "구로구",
     "vet": true,
     "category": "HOSPITAL"
+  },
+  {
+    "id": "v-008",
+    "name": "죽전동물병원",
+    "lat": 37.320742,
+    "lng": 127.114262,
+    "address": "보정동",
+    "vet": true,
+    "category": "HOSPITAL"
+  },
+  {
+    "id": "v-009",
+    "name": "나온동물의료센터",
+    "lat": 37.320735,
+    "lng": 127.112135,
+    "address": "보정동",
+    "vet": true,
+    "category": "HOSPITAL"
+  },
+  {
+    "id": "v-010",
+    "name": "해뜰동물병원",
+    "lat": 37.320262,
+    "lng": 127.114267,
+    "address": "보정동",
+    "vet": true,
+    "category": "HOSPITAL"
+  },
+  {
+    "id": "v-011",
+    "name": "튼튼동물병원",
+    "lat": 37.319465,
+    "lng": 127.113811,
+    "address": "보정동",
+    "vet": true,
+    "category": "HOSPITAL"
+  },
+  {
+    "id": "v-012",
+    "name": "보정동물병원",
+    "lat": 37.313796,
+    "lng": 127.111033,
+    "address": "보정동",
+    "vet": true,
+    "category": "HOSPITAL"
+  },
+  {
+    "id": "v-013",
+    "name": "죽전쿨펫동물병원",
+    "lat": 37.325359,
+    "lng": 127.109981,
+    "address": "죽전동",
+    "vet": true,
+    "category": "HOSPITAL"
   }
 ]

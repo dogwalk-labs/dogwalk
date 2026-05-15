@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenAI } from "@google/genai";
 import { recommend3 } from "./recommend.js";
 import ws from "ws";
 
@@ -16,6 +17,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// ✅ Gemini 연결
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 // ✅ Supabase 연결
 const supabase = createClient(
@@ -28,15 +34,15 @@ const supabase = createClient(
   }
 );
 
-
 // ===================================================
-// 🔥 1. 추천 API (DB 저장 ❌)
+// 🔥 1. 추천 API
 // ===================================================
 app.post("/recommend", async (req, res) => {
   console.log("RECOMMEND HIT", new Date().toISOString(), req.body);
 
   try {
-    const { start, minutes, userId, bannedRouteIds, count, tags } = req.body ?? {};
+    const { start, minutes, userId, bannedRouteIds, count, tags } =
+      req.body ?? {};
 
     if (
       !start ||
@@ -73,9 +79,8 @@ app.post("/recommend", async (req, res) => {
   }
 });
 
-
 // ===================================================
-// 🔥 2. 좋아요/아쉬워요 API (여기서만 DB 저장)
+// 🔥 2. 좋아요/아쉬워요 API
 // ===================================================
 app.post("/feedback", async (req, res) => {
   try {
@@ -85,7 +90,6 @@ app.post("/feedback", async (req, res) => {
       return res.status(400).json({ error: "route 필요" });
     }
 
-    // 👎면 저장 안함
     if (!liked) {
       return res.json({ ok: true, message: "skip save" });
     }
@@ -98,7 +102,7 @@ app.post("/feedback", async (req, res) => {
       duration_sec: route.durationSec,
       geometry_json: route.geometry,
       meta: {
-        category: category, // 👈 핵심
+        category,
         title: route.title,
         traits: route.traits,
         explanation: route.explanation,
@@ -108,14 +112,12 @@ app.post("/feedback", async (req, res) => {
     if (error) throw error;
 
     console.log("👍 좋아요 경로 저장 완료");
-
     return res.json({ ok: true });
   } catch (e) {
     console.error("feedback error:", e);
     return res.status(500).json({ error: e.message });
   }
 });
-
 
 // ===================================================
 // POI API
@@ -140,6 +142,57 @@ app.get("/pois", (req, res) => {
   }
 });
 
+// ===================================================
+// 챗봇 API
+// ===================================================
+app.post("/chat", async (req, res) => {
+  try {
+    const { message } = req.body ?? {};
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ error: "message 필요" });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY가 .env에 없습니다.",
+      });
+    }
+
+    const prompt = `
+너는 반려견 산책 앱 "멍멍워크"의 챗봇이야.
+
+역할:
+- 반려견 산책, 건강, 생활 관리, 산책 준비물, 위험 음식 등에 대해 답변해줘.
+- 답변은 한국어로 해줘.
+- 말투는 친절하고 다정하게 해줘.
+- 너무 길게 말하지 말고 3~6문장 정도로 답해줘.
+- 위험한 상황이면 "가까운 동물병원에 문의하세요"라고 안내해줘.
+- 정확한 진단이나 처방은 하지 마.
+
+사용자 질문:
+${message}
+`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: prompt,
+    });
+
+    const reply =
+      response?.text ||
+      response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "답변을 생성하지 못했어요.";
+
+    return res.json({ reply });
+  } catch (e) {
+    console.error("POST /chat error:", e);
+    return res.status(500).json({
+      error: "chat failed",
+      detail: e?.message || String(e),
+    });
+  }
+});
 
 // ===================================================
 // 헬스체크

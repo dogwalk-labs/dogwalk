@@ -1,20 +1,56 @@
 [
   {
     "id": "r-001",
-    "name": "아이러브펫동물병원 신도림점",
-    "lat": 37.50964,
-    "lng": 126.8884633,
-    "address": "구로구",
+    "name": "솔솥 용인보정점",
+    "lat": 37.322219,
+    "lng": 127.110482,
+    "address": "보정동",
     "resto": true,
     "category": "RESTAURANT"
   },
   {
-    "id": "v-002",
-    "name": "신도림동물병원",
-    "lat": 37.5092416,
-    "lng": 126.8877351,
-    "address": "구로구",
+    "id": "r-002",
+    "name": "문스",
+    "lat": 37.321845,
+    "lng": 127.109999,
+    "address": "보정동",
+    "resto": true,
+    "category": "RESTAURANT"
+  },
+  {
+    "id": "r-003",
+    "name": "포멜로",
+    "lat": 37.321512,
+    "lng": 127.110534,
+    "address": "보정동",
+    "resto": true,
+    "category": "RESTAURANT"
+  },
+  {
+    "id": "r-004",
+    "name": "멍하이루",
+    "lat": 37.328928,
+    "lng": 127.117084,
+    "address": "죽전동",
+    "resto": true,
+    "category": "RESTAURANT"
+  },
+  {
+    "id": "r-005",
+    "name": "에스페라(Espera)",
+    "lat": 37.331875,
+    "lng": 127.127139,
+    "address": "죽전동",
+    "resto": true,
+    "category": "RESTAURANT"
+  },
+  {
+    "id": "r-006",
+    "name": "써니사이드",
+    "lat": 37.333637,
+    "lng": 127.095293,
+    "address": "동천동",
     "resto": true,
     "category": "RESTAURANT"
   }
-  ]
+]

@@ -8,6 +8,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 
 const BG = "#FBF3DD";
@@ -30,107 +32,123 @@ export default function DogProfileFormScreen({ onCompletePress }) {
   }, [name, gender, age, breed]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-          <Text style={styles.title}>반려견 정보를{"\n"}입력해주세요!</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.content}>
+            <Text style={styles.title}>반려견 정보를{"\n"}입력해주세요!</Text>
 
-          <View style={styles.inputWrap}>
-            <Text style={styles.label}>이름</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              style={styles.input}
-              placeholder="반려견 이름을 입력해주세요"
-              placeholderTextColor="#BDBDBD"
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Text style={styles.label}>나이</Text>
-            <TextInput
-              value={age}
-              onChangeText={setAge}
-              style={styles.input}
-              placeholder="반려견 나이를 입력해주세요"
-              placeholderTextColor="#BDBDBD"
-              keyboardType="number-pad"
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Text style={styles.label}>성별</Text>
-            <View style={styles.genderRow}>
-              <Pressable
-                style={[
-                  styles.genderButton,
-                  gender === "male" && styles.genderButtonActive,
-                ]}
-                onPress={() => setGender("male")}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    gender === "male" && styles.genderTextActive,
-                  ]}
-                >
-                  수컷
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.genderButton,
-                  gender === "female" && styles.genderButtonActive,
-                ]}
-                onPress={() => setGender("female")}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    gender === "female" && styles.genderTextActive,
-                  ]}
-                >
-                  암컷
-                </Text>
-              </Pressable>
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>이름</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                style={styles.input}
+                placeholder="반려견 이름을 입력해주세요"
+                placeholderTextColor="#BDBDBD"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+              />
             </View>
-          </View>
 
-          <View style={styles.inputWrap}>
-            <Text style={styles.label}>견종</Text>
-            <TextInput
-              value={breed}
-              onChangeText={setBreed}
-              style={styles.input}
-              placeholder="견종을 입력해주세요"
-              placeholderTextColor="#BDBDBD"
-            />
-          </View>
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>나이</Text>
+              <TextInput
+                value={age}
+                onChangeText={setAge}
+                style={styles.input}
+                placeholder="반려견 나이를 입력해주세요"
+                placeholderTextColor="#BDBDBD"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
 
-          <Pressable
-            disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.submitButton,
-              !canSubmit && styles.submitButtonDisabled,
-              pressed && canSubmit && styles.buttonPressed,
-            ]}
-            onPress={() =>
-              onCompletePress?.({
-                name,
-                age,
-                gender,
-                breed,
-              })
-            }
-          >
-            <Text style={styles.submitButtonText}>프로필 생성</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>성별</Text>
+              <View style={styles.genderRow}>
+                <Pressable
+                  style={[
+                    styles.genderButton,
+                    gender === "male" && styles.genderButtonActive,
+                  ]}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setGender("male");
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.genderText,
+                      gender === "male" && styles.genderTextActive,
+                    ]}
+                  >
+                    수컷
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.genderButton,
+                    gender === "female" && styles.genderButtonActive,
+                  ]}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setGender("female");
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.genderText,
+                      gender === "female" && styles.genderTextActive,
+                    ]}
+                  >
+                    암컷
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>견종</Text>
+              <TextInput
+                value={breed}
+                onChangeText={setBreed}
+                style={styles.input}
+                placeholder="견종을 입력해주세요"
+                placeholderTextColor="#BDBDBD"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
+
+            <Pressable
+              disabled={!canSubmit}
+              style={({ pressed }) => [
+                styles.submitButton,
+                !canSubmit && styles.submitButtonDisabled,
+                pressed && canSubmit && styles.buttonPressed,
+              ]}
+              onPress={() => {
+                Keyboard.dismiss();
+                onCompletePress?.({
+                  name,
+                  age,
+                  gender,
+                  breed,
+                });
+              }}
+            >
+              <Text style={styles.submitButtonText}>프로필 생성</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 

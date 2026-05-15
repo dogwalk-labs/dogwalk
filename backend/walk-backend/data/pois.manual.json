@@ -556,6 +556,60 @@
     "address": "영등포구",
     "pet": true,
     "category": "CAFE"
-  }
+  },
+
+  {
+    "id": "p-101",
+    "name": "카페 민가",
+    "lat": 37.321718,
+    "lng": 127.109384,
+    "address": "보정동",
+    "pet": true,
+    "category": "CAFE"
+},
+{
+    
+  "id": "p-102",
+  "name": "카페 in",
+  "lat": 37.3219688,
+  "lng": 127.1129266,
+  "address": "보정동",
+  "pet": true,
+  "category": "CAFE"
+},
+{
+    
+  "id": "p-103",
+  "name": "타카독스커피",
+  "lat": 37.3207461,
+  "lng": 127.1124961,
+  "address": "보정동",
+  "pet": true,
+  "category": "CAFE"
+},
+{
+  
+  "id": "p-104",
+  "name": "이프아이엔지",
+  "lat": 37.3217148,
+  "lng": 127.1099985,
+  "address": "보정동",
+  "pet": true,
+  "category": "CAFE"
+},
+{
+  
+  "id": "p-105",
+  "name": "스테이어도러블",
+  "lat": 37.3214509,
+  "lng": 127.1127961,
+  "address": "보정동",
+  "pet": true,
+  "category": "CAFE"
+
+}
+
+  
+
 
 ]

@@ -10,6 +10,8 @@ import OnboardingSlide2 from "./OnboardingSlide2";
 import OnboardingSlide3 from "./OnboardingSlide3";
 import LoginScreen from "./LoginScreen";
 import RegisterScreen from "./RegisterScreen";
+import ForgotPasswordScreen from "./ForgotPasswordScreen";
+import ResetPasswordScreen from "./ResetPasswordScreen";
 import ProfileRequiredScreen from "./ProfileRequiredScreen";
 import UserProfileFormScreen from "./UserProfileFormScreen";
 import DogProfileFormScreen from "./DogProfileFormScreen";
@@ -39,6 +41,7 @@ export default function OnboardingScreen({ navigation }) {
   const [activeView, setActiveView] = useState("onboarding");
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const onScroll = (e) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -53,7 +56,6 @@ export default function OnboardingScreen({ navigation }) {
   useEffect(() => {
     if (activeView !== "onboarding") return;
     if (currentIndex !== 2) return;
-    // 회원가입 -> 뒤로가기일 때 3번째 슬라이드로 복귀
     scrollRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: false });
   }, [activeView, currentIndex]);
 
@@ -65,6 +67,7 @@ export default function OnboardingScreen({ navigation }) {
         onLoginPress={async ({ email, password }) => {
           if (loginSubmitting) return;
           setLoginSubmitting(true);
+
           try {
             const res = await fetch(`${API_BASE_URL}/auth/login`, {
               method: "POST",
@@ -74,7 +77,9 @@ export default function OnboardingScreen({ navigation }) {
                 password,
               }),
             });
+
             const data = await res.json().catch(() => ({}));
+
             if (!res.ok) {
               Alert.alert(
                 "로그인 실패",
@@ -93,10 +98,7 @@ export default function OnboardingScreen({ navigation }) {
               nickname: data.nickname,
             });
 
-            const profileRes = await fetch(
-              `${API_BASE_URL}/profiles/me/${data.id}`
-            );
-
+            const profileRes = await fetch(`${API_BASE_URL}/profiles/me/${data.id}`);
             const profileData = await profileRes.json();
 
             console.log("profile check:", profileData);
@@ -106,18 +108,43 @@ export default function OnboardingScreen({ navigation }) {
             } else {
               setActiveView("profileRequired");
             }
-
-            } catch {
-              Alert.alert("오류", "네트워크 오류가 발생했습니다.");
-            } finally {
-              setLoginSubmitting(false);
-            }
+          } catch (error) {
+            console.log("login error:", error);
+            Alert.alert("오류", "네트워크 오류가 발생했습니다.");
+          } finally {
+            setLoginSubmitting(false);
+          }
         }}
         onSignupPress={() => {
           setActiveView("register");
           setCurrentIndex(2);
         }}
-        onForgotPress={() => Alert.alert("안내", "비밀번호 찾기는 추후 연결 예정이에요.")}
+        onForgotPress={() => setActiveView("forgotPassword")}
+      />
+    );
+  }
+
+  if (activeView === "forgotPassword") {
+    return (
+      <ForgotPasswordScreen
+        onBack={() => setActiveView("login")}
+        onVerified={(email) => {
+          setResetEmail(email);
+          setActiveView("resetPassword");
+        }}
+      />
+    );
+  }
+
+  if (activeView === "resetPassword") {
+    return (
+      <ResetPasswordScreen
+        email={resetEmail}
+        onBack={() => setActiveView("forgotPassword")}
+        onComplete={() => {
+          setResetEmail("");
+          setActiveView("login");
+        }}
       />
     );
   }
@@ -134,36 +161,82 @@ export default function OnboardingScreen({ navigation }) {
           if (signupSubmitting) return;
           setSignupSubmitting(true);
 
-          try {
-            //디버깅용 로그 추가
-            // console.log("회원가입 요청 payload:", {
-            //   email: payload.email.trim(),
-            //   password: payload.password,
-            //   password_confirm: payload.password_confirm,
-            //   nickname: payload.nickname?.trim() || null,
-            // });
+          const email = payload.email.trim().toLowerCase();
+          const password = payload.password;
+          const passwordConfirm = payload.password_confirm;
+          const nickname = payload.nickname?.trim() || null;
+          const passwordBytes = new TextEncoder().encode(password).length;
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+          if (!emailRegex.test(email)) {
+            Alert.alert(
+              "이메일 오류",
+              "올바른 이메일 형식으로 입력해 주세요.\n예: dogwalk@example.com"
+            );
+            setSignupSubmitting(false);
+            return;
+          }
+
+          if (password.length < 8) {
+            Alert.alert(
+              "비밀번호 오류",
+              "비밀번호는 최소 8자 이상 입력해 주세요."
+            );
+            setSignupSubmitting(false);
+            return;
+          }
+
+          if (passwordBytes > 72) {
+            Alert.alert(
+              "비밀번호 오류",
+              `비밀번호가 너무 깁니다.\n현재 ${passwordBytes} bytes이며, 최대 72 bytes까지 사용할 수 있어요.`
+            );
+            setSignupSubmitting(false);
+            return;
+          }
+
+          if (password !== passwordConfirm) {
+            Alert.alert(
+              "비밀번호 확인 오류",
+              "비밀번호와 비밀번호 확인이 일치하지 않습니다."
+            );
+            setSignupSubmitting(false);
+            return;
+          }
+
+          try {
             const res = await fetch(`${API_BASE_URL}/auth/signup`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                email: payload.email.trim(),
-                password: payload.password,
-                password_confirm: payload.password_confirm,
-                nickname: payload.nickname?.trim() || null,
+                email,
+                password,
+                password_confirm: passwordConfirm,
+                nickname,
               }),
             });
 
-            const data = await res.json().catch(() => ({}));
+            const rawText = await res.text();
 
-            //디버깅용 로그 주석처리
-            //console.log("signup status:", res.status);
-            //console.log("signup data:", data);
+            let data = {};
+            try {
+              data = rawText ? JSON.parse(rawText) : {};
+            } catch {
+              data = { raw: rawText };
+            }
+
+            console.log("signup status:", res.status);
+            console.log("signup response:", data);
 
             if (!res.ok) {
+              const detailMessage = formatApiErrorDetail(
+                data.detail,
+                data.raw || "서버에서 자세한 오류 메시지를 받지 못했습니다."
+              );
+
               Alert.alert(
                 "회원가입 실패",
-                formatApiErrorDetail(data.detail, "회원가입에 실패했습니다.")
+                `상태 코드: ${res.status}\n\n원인: ${detailMessage}`
               );
               return;
             }
@@ -171,9 +244,12 @@ export default function OnboardingScreen({ navigation }) {
             Alert.alert("가입 완료", "로그인 화면에서 로그인해 주세요.", [
               { text: "확인", onPress: () => setActiveView("login") },
             ]);
-          } catch(error) {
+          } catch (error) {
             console.log("signup error:", error);
-            Alert.alert("오류", "네트워크 오류가 발생했습니다.");
+            Alert.alert(
+              "오류",
+              `네트워크 오류가 발생했습니다.\n\n${String(error?.message || error)}`
+            );
           } finally {
             setSignupSubmitting(false);
           }
@@ -190,81 +266,74 @@ export default function OnboardingScreen({ navigation }) {
     );
   }
 
-    if (activeView === "userProfileForm") {
-      return (
-        <UserProfileFormScreen
-          onNextPress={async (payload) => {
-            try {
-              const user = await getCurrentUser();
+  if (activeView === "userProfileForm") {
+    return (
+      <UserProfileFormScreen
+        onNextPress={async (payload) => {
+          try {
+            const user = await getCurrentUser();
 
-              const res = await fetch(`${API_BASE_URL}/profiles/user`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  user_id: user.id,
-                  nickname: payload.nickname,
-                  age: Number(payload.age),
-                  gender: payload.gender,
-                  emergency_contact: payload.emergencyContact,
-                }),
-              });
+            const res = await fetch(`${API_BASE_URL}/profiles/user`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: user.id,
+                nickname: payload.nickname,
+                age: Number(payload.age),
+                gender: payload.gender,
+                emergency_contact: payload.emergencyContact,
+              }),
+            });
 
-              const data = await res.json();
+            const data = await res.json();
+            console.log("user profile result:", data);
 
-              console.log("user profile result:", data);
+            setActiveView("dogProfileForm");
+          } catch (e) {
+            console.log(e);
+            Alert.alert("오류", "사용자 정보 저장 실패");
+          }
+        }}
+      />
+    );
+  }
 
-              setActiveView("dogProfileForm");
-            } catch (e) {
-              console.log(e);
-              Alert.alert("오류", "사용자 정보 저장 실패");
-            }
-          }}
-        />
-      );
-    }
+  if (activeView === "dogProfileForm") {
+    return (
+      <DogProfileFormScreen
+        onCompletePress={async (payload) => {
+          try {
+            const user = await getCurrentUser();
 
-    if (activeView === "dogProfileForm") {
-      return (
-        <DogProfileFormScreen
-          onCompletePress={async (payload) => {
-            try {
-              const user = await getCurrentUser();
+            const res = await fetch(`${API_BASE_URL}/profiles/dog`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: user.id,
+                name: payload.name,
+                age: Number(payload.age),
+                gender: payload.gender,
+                breed: payload.breed,
+              }),
+            });
 
-              const res = await fetch(`${API_BASE_URL}/profiles/dog`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  user_id: user.id,
-                  name: payload.name,
-                  age: Number(payload.age),
-                  gender: payload.gender,
-                  breed: payload.breed,
-                }),
-              });
+            const data = await res.json();
+            console.log("dog profile result:", data);
 
-              const data = await res.json();
-
-              console.log("dog profile result:", data);
-
-              if (!res.ok) {
-                Alert.alert("오류", "반려견 정보 저장 실패");
-                return;
-              }
-
-              navigation.replace("MainTabs");
-            } catch (e) {
-              console.log(e);
+            if (!res.ok) {
               Alert.alert("오류", "반려견 정보 저장 실패");
+              return;
             }
-          }}
-        />
-      );
-    }
 
+            navigation.replace("MainTabs");
+          } catch (e) {
+            console.log(e);
+            Alert.alert("오류", "반려견 정보 저장 실패");
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>

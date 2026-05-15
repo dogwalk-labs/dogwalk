@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 const TAB_CONFIG = [
   { key: "ranking", label: "랭킹", icon: "crown-outline", iconActive: "crown" },
   { key: "walk", label: "산책하기", icon: "paw-outline", iconActive: "paw" },
-  { key: "community", label: "커뮤니티", icon: "forum-outline", iconActive: "forum" },
+  { key: "community", label: "챗봇", icon: "forum-outline", iconActive: "forum" },
   { key: "profile", label: "프로필", icon: "account-outline", iconActive: "account" },
 ];
 

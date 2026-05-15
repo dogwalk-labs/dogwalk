@@ -1,16 +1,38 @@
-// MapScreen.js
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-native";
 import { WebView } from "react-native-webview";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { POI_SERVICE_BASE_URL } from "../config/config";
+import {
+  getAverageRatingByPoiId,
+  getReviewCountByPoiId,
+} from "./reviewStore";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
 const CATEGORY_CONFIG = [
-  { key: "CAFE",       label: "☕ 애견동반 카페",   bg: "#f6eaff", text: "#aa71a8", bgActive: "#aa71a8" },
-  { key: "HOSPITAL",   label: "🏥 동물 병원",      bg: "#E8F6E8", text: "#2E8B57", bgActive: "#37A66A" },
-  { key: "RESTAURANT", label: "🍔 애견동반 식당",  bg: "#FBE3E6", text: "#D4637A", bgActive: "#E06A84" },
+  {
+    key: "CAFE",
+    label: "☕ 애견동반 카페",
+    bg: "#f6eaff",
+    text: "#aa71a8",
+    markerColor: "#aa71a8",
+  },
+  {
+    key: "HOSPITAL",
+    label: "🏥 동물 병원",
+    bg: "#E8F6E8",
+    text: "#2E8B57",
+    markerColor: "#37A66A",
+  },
+  {
+    key: "RESTAURANT",
+    label: "🍔 애견동반 식당",
+    bg: "#FBE3E6",
+    text: "#D4637A",
+    markerColor: "#E06A84",
+  },
 ];
 
 const makeHtml = () => `
@@ -29,6 +51,123 @@ const makeHtml = () => `
       width: 100%;
       height: 100%;
     }
+
+    .poi-marker-wrap {
+      position: relative;
+      width: 32px;
+      height: 46px;
+    }
+
+    .poi-marker-pin {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 32px;
+      height: 46px;
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+    }
+
+    .poi-marker-pin svg {
+      display: block;
+      width: 32px;
+      height: 46px;
+    }
+
+    .poi-marker-dot {
+      position: absolute;
+      left: 50%;
+      top: 13px;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ffffff;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .poi-card-wrap {
+      transform: translate(-50%, calc(-100% + 20px));
+    }
+
+    .poi-card {
+      width: 210px;
+      padding: 14px 14px 16px;
+      background: #ffffff;
+      border: 2px solid #CDB79E;
+      border-radius: 18px;
+      box-shadow: 0 5px 14px rgba(0,0,0,0.18);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-sizing: border-box;
+    }
+
+    .poi-card::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -9px;
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border-right: 2px solid #CDB79E;
+      border-bottom: 2px solid #CDB79E;
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .poi-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .poi-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #4A3A2A;
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .heart-btn {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      line-height: 24px;
+      padding: 0;
+      margin: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .poi-address {
+      font-size: 13px;
+      color: #777;
+      margin-bottom: 8px;
+    }
+
+    .poi-rating {
+      font-size: 14px;
+      color: #6A5A4A;
+      margin-bottom: 14px;
+    }
+
+    .review-btn {
+      width: 128px;
+      height: 36px;
+      border: none;
+      border-radius: 18px;
+      background: #CDB79E;
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      display: block;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
@@ -37,33 +176,49 @@ const makeHtml = () => `
   <script>
     var map = null;
     var myMarker = null;
-    var poiMarkers = [];
-    var infoWindows = [];
-    var markerImage = null;
+    var myMarkerImage = null;
+    var poiMarkerOverlays = [];
+    var poiCardOverlays = [];
+    var selectedPoiId = null;
+    var hasInitialCentered = false;
+
+    var CATEGORY_STYLE = {
+      CAFE: { label: "☕ 애견동반 카페", color: "#aa71a8" },
+      HOSPITAL: { label: "🏥 동물 병원", color: "#37A66A" },
+      RESTAURANT: { label: "🍔 애견동반 식당", color: "#E06A84" }
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
     function getDogMarkerImage() {
-      if (!window.kakao || !window.kakao.maps) return null;
-      if (markerImage) return markerImage;
+      if (myMarkerImage) return myMarkerImage;
 
-      markerImage = new kakao.maps.MarkerImage(
+      myMarkerImage = new kakao.maps.MarkerImage(
         "https://cdn-icons-png.flaticon.com/512/3089/3089423.png",
-        new kakao.maps.Size(60, 60),
-        { offset: new kakao.maps.Point(30, 60) }
+        new kakao.maps.Size(56, 56),
+        { offset: new kakao.maps.Point(28, 56) }
       );
 
-      return markerImage;
+      return myMarkerImage;
     }
 
     function clearPois() {
-      for (var i = 0; i < poiMarkers.length; i++) {
-        poiMarkers[i].setMap(null);
-      }
-      poiMarkers = [];
+      poiMarkerOverlays.forEach(function(overlay) {
+        overlay.setMap(null);
+      });
+      poiMarkerOverlays = [];
 
-      for (var j = 0; j < infoWindows.length; j++) {
-        infoWindows[j].close();
-      }
-      infoWindows = [];
+      poiCardOverlays.forEach(function(overlay) {
+        overlay.setMap(null);
+      });
+      poiCardOverlays = [];
     }
 
     function createMap() {
@@ -75,7 +230,7 @@ const makeHtml = () => `
       var container = document.getElementById("map");
       var options = {
         center: new kakao.maps.LatLng(37.5665, 126.9780),
-        level: 3
+        level: 4
       };
 
       map = new kakao.maps.Map(container, options);
@@ -91,12 +246,11 @@ const makeHtml = () => `
       window.ReactNativeWebView?.postMessage("Map created OK");
     }
 
-    window.setMyLocation = function(lat, lng) {
+    window.setMyLocation = function(lat, lng, shouldCenter) {
       try {
         if (!window.kakao || !window.kakao.maps || !map) return;
 
         var pos = new kakao.maps.LatLng(lat, lng);
-        map.setCenter(pos);
 
         if (!myMarker) {
           myMarker = new kakao.maps.Marker({
@@ -107,15 +261,67 @@ const makeHtml = () => `
         } else {
           myMarker.setPosition(pos);
         }
+
+        if (shouldCenter || !hasInitialCentered) {
+          map.setCenter(pos);
+          map.setLevel(4);
+          hasInitialCentered = true;
+        }
       } catch (e) {
         window.ReactNativeWebView?.postMessage("setMyLocation error: " + e.message);
       }
     };
 
-    window.renderPois = function(pois) {
+    function makePoiMarker(p) {
+      var style = CATEGORY_STYLE[p.category] || CATEGORY_STYLE.CAFE;
+      var color = escapeHtml(style.color);
+
+      return '' +
+        '<div class="poi-marker-wrap" onclick="window.ReactNativeWebView.postMessage(\\'MARKER_CLICK:' + escapeHtml(p.id) + '\\')">' +
+          '<div class="poi-marker-pin">' +
+            '<svg viewBox="0 0 32 46" xmlns="http://www.w3.org/2000/svg">' +
+              '<path d="M16 45C16 45 30 28.5 30 16C30 7.2 23.7 1 16 1C8.3 1 2 7.2 2 16C2 28.5 16 45 16 45Z" fill="' + color + '" stroke="#ffffff" stroke-width="2.5"/>' +
+            '</svg>' +
+          '</div>' +
+          '<div class="poi-marker-dot"></div>' +
+        '</div>';
+    }
+
+    function makePoiCard(p) {
+      var title = escapeHtml(p.title || "이름 없음");
+      var address = escapeHtml(p.address || "");
+      var rating = Number.isFinite(Number(p.rating)) ? Number(p.rating).toFixed(1) : "0.0";
+      var reviewCount = Number.isFinite(Number(p.reviewCount)) ? Number(p.reviewCount) : 0;
+      var heart = p.favorite ? "♥" : "♡";
+      var heartColor = p.favorite ? "#E94B5A" : "#9A9A9A";
+
+      return '' +
+        '<div class="poi-card-wrap">' +
+          '<div class="poi-card">' +
+            '<div class="poi-title-row">' +
+              '<div class="poi-title">' + title + '</div>' +
+              '<button class="heart-btn" style="color:' + heartColor + ';" onclick="window.ReactNativeWebView.postMessage(\\'FAVORITE_TOGGLE:' + escapeHtml(p.id) + '\\')">' +
+                heart +
+              '</button>' +
+            '</div>' +
+            '<div class="poi-address">' + address + '</div>' +
+            '<div class="poi-rating">' +
+              '<span style="color:#F5B400;font-size:16px;">★</span> ' +
+              '<span style="font-weight:700;">' + rating + '</span> ' +
+              '<span style="color:#888;">(' + reviewCount + ')</span>' +
+            '</div>' +
+            '<button class="review-btn" onclick="window.ReactNativeWebView.postMessage(\\'REVIEW_PRESS:' + escapeHtml(p.id) + '\\')">' +
+              '리뷰 보기' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    window.renderPois = function(pois, activePoiId, shouldFitBounds) {
       try {
         if (!window.kakao || !window.kakao.maps || !map) return;
 
+        selectedPoiId = activePoiId || null;
         clearPois();
 
         var list = Array.isArray(pois) ? pois : [];
@@ -127,31 +333,37 @@ const makeHtml = () => `
           if (!Number.isFinite(Number(p.lat)) || !Number.isFinite(Number(p.lng))) return;
 
           var pos = new kakao.maps.LatLng(Number(p.lat), Number(p.lng));
-          var marker = new kakao.maps.Marker({ position: pos });
-          marker.setMap(map);
-          poiMarkers.push(marker);
           bounds.extend(pos);
 
-          var content =
-            '<div style="padding:10px;min-width:180px;">' +
-              '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">' + (p.title || "이름 없음") + '</div>' +
-              '<div style="font-size:12px;color:#666;">' + (p.address || "") + '</div>' +
-            '</div>';
-
-          var infowindow = new kakao.maps.InfoWindow({ content: content });
-          infoWindows.push(infowindow);
-
-          kakao.maps.event.addListener(marker, "click", function() {
-            infoWindows.forEach(function(iw) { iw.close(); });
-            infowindow.open(map, marker);
+          var markerOverlay = new kakao.maps.CustomOverlay({
+            position: pos,
+            content: makePoiMarker(p),
+            xAnchor: 0.5,
+            yAnchor: 1,
+            zIndex: 5
           });
+
+          markerOverlay.setMap(map);
+          poiMarkerOverlays.push(markerOverlay);
+
+          var cardOverlay = new kakao.maps.CustomOverlay({
+            position: pos,
+            content: makePoiCard(p),
+            xAnchor: 0.5,
+            yAnchor: 0.8,
+            zIndex: 10
+          });
+
+          poiCardOverlays.push(cardOverlay);
+
+          if (selectedPoiId === p.id) {
+            cardOverlay.setMap(map);
+          }
         });
 
-        if (myMarker) {
-          bounds.extend(myMarker.getPosition());
+        if (shouldFitBounds && list.length > 0) {
+          map.setBounds(bounds);
         }
-
-        map.setBounds(bounds);
       } catch (e) {
         window.ReactNativeWebView?.postMessage("renderPois error: " + e.message);
       }
@@ -208,10 +420,35 @@ function normalizePoiCategory(raw) {
 function normalizeFavorite(item) {
   return Boolean(
     item.favorite === true ||
-    item.isFavorite === true ||
-    item.bookmarked === true ||
-    item.liked === true
+      item.isFavorite === true ||
+      item.bookmarked === true ||
+      item.liked === true
   );
+}
+
+function normalizeRating(item) {
+  const reviewCount = Number(
+    item.reviewCount ??
+      item.review_count ??
+      item.review_count_total ??
+      item.reviewsCount ??
+      item.reviews_count ??
+      0
+  );
+
+  const rating = Number(
+    item.rating ??
+      item.avgRating ??
+      item.averageRating ??
+      item.average_rating ??
+      item.score ??
+      0
+  );
+
+  return {
+    rating: Number.isFinite(rating) ? rating : 0,
+    reviewCount: Number.isFinite(reviewCount) ? reviewCount : 0,
+  };
 }
 
 function normalizePoi(item) {
@@ -225,6 +462,8 @@ function normalizePoi(item) {
     else if (item.pet === true) rawCategory = "CAFE";
   }
 
+  const ratingInfo = normalizeRating(item);
+
   return {
     id: String(item.id ?? `${item.name ?? item.title ?? "poi"}-${lat}-${lng}`),
     title: item.title ?? item.name ?? item.place_name ?? "이름 없음",
@@ -233,6 +472,8 @@ function normalizePoi(item) {
     lng,
     category: normalizePoiCategory(rawCategory),
     favorite: normalizeFavorite(item),
+    rating: ratingInfo.rating,
+    reviewCount: ratingInfo.reviewCount,
   };
 }
 
@@ -243,11 +484,20 @@ export default function MapScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedPoiId, setSelectedPoiId] = useState(null);
   const [poisRaw, setPoisRaw] = useState([]);
   const [poisLoading, setPoisLoading] = useState(true);
 
   const [isMyLocationActive, setIsMyLocationActive] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favoriteOverrides, setFavoriteOverrides] = useState({});
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setReviewRefreshKey(Date.now());
+    }, [])
+  );
 
   useEffect(() => {
     let subscription = null;
@@ -314,8 +564,22 @@ export default function MapScreen({ navigation }) {
   const allPois = useMemo(() => {
     return flattenPois(poisRaw)
       .map(normalizePoi)
+      .map((p) => {
+        const localReviewCount = getReviewCountByPoiId(p.id);
+        const localAvgRating = getAverageRatingByPoiId(p.id);
+
+        return {
+          ...p,
+          favorite:
+            favoriteOverrides[p.id] !== undefined
+              ? favoriteOverrides[p.id]
+              : p.favorite,
+          rating: localReviewCount > 0 ? localAvgRating : p.rating,
+          reviewCount: localReviewCount > 0 ? localReviewCount : p.reviewCount,
+        };
+      })
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category);
-  }, [poisRaw]);
+  }, [poisRaw, favoriteOverrides, reviewRefreshKey]);
 
   const filteredPois = useMemo(() => {
     let list = allPois;
@@ -335,26 +599,34 @@ export default function MapScreen({ navigation }) {
     if (!coords || !mapReady || !webviewRef.current) return;
 
     const js = `
-      window.setMyLocation(${coords.latitude}, ${coords.longitude});
+      window.setMyLocation(${coords.latitude}, ${coords.longitude}, false);
       true;
     `;
+
     webviewRef.current.injectJavaScript(js);
-    setIsMyLocationActive(true);
   }, [coords, mapReady]);
 
   useEffect(() => {
     if (!mapReady || !webviewRef.current) return;
 
-    const pois = selectedCategory === null && !showFavoritesOnly ? [] : filteredPois;
+    const shouldShowPois = selectedCategory !== null || showFavoritesOnly;
+    const pois = shouldShowPois ? filteredPois : [];
 
     const js = `
-      window.renderPois(${JSON.stringify(pois)});
+      window.renderPois(
+        ${JSON.stringify(pois)},
+        ${JSON.stringify(selectedPoiId)},
+        ${shouldShowPois && selectedPoiId === null ? "true" : "false"}
+      );
       true;
     `;
+
     webviewRef.current.injectJavaScript(js);
-  }, [mapReady, filteredPois, selectedCategory, showFavoritesOnly]);
+  }, [mapReady, filteredPois, selectedCategory, showFavoritesOnly, selectedPoiId]);
 
   const onSelectCategory = useCallback((key) => {
+    setSelectedPoiId(null);
+    setShowFavoritesOnly(false);
     setSelectedCategory((prev) => (prev === key ? null : key));
   }, []);
 
@@ -362,16 +634,33 @@ export default function MapScreen({ navigation }) {
     if (!coords || !mapReady || !webviewRef.current) return;
 
     const js = `
-      window.setMyLocation(${coords.latitude}, ${coords.longitude});
+      window.setMyLocation(${coords.latitude}, ${coords.longitude}, true);
       true;
     `;
+
     webviewRef.current.injectJavaScript(js);
     setIsMyLocationActive(true);
   }, [coords, mapReady]);
 
   const toggleFavoritesOnly = useCallback(() => {
+    setSelectedPoiId(null);
+    setSelectedCategory(null);
     setShowFavoritesOnly((prev) => !prev);
   }, []);
+
+  const toggleFavoriteById = useCallback(
+    (poiId) => {
+      const target = allPois.find((p) => p.id === poiId);
+
+      setFavoriteOverrides((prev) => ({
+        ...prev,
+        [poiId]: !(prev[poiId] !== undefined ? prev[poiId] : target?.favorite),
+      }));
+
+      setSelectedPoiId(poiId);
+    },
+    [allPois]
+  );
 
   return (
     <View style={styles.container}>
@@ -406,6 +695,28 @@ export default function MapScreen({ navigation }) {
 
             if (msg === "USER_MOVED_MAP") {
               setIsMyLocationActive(false);
+            }
+
+            if (msg.startsWith("MARKER_CLICK:")) {
+              setSelectedPoiId(msg.replace("MARKER_CLICK:", ""));
+            }
+
+            if (msg.startsWith("FAVORITE_TOGGLE:")) {
+              const poiId = msg.replace("FAVORITE_TOGGLE:", "");
+              toggleFavoriteById(poiId);
+            }
+
+            if (msg.startsWith("REVIEW_PRESS:")) {
+              const poiId = msg.replace("REVIEW_PRESS:", "");
+              const poi = allPois.find((p) => p.id === poiId);
+
+              navigation.navigate("PlaceReview", {
+                poiId,
+                poiTitle: poi?.title ?? "리뷰 보기",
+                poiAddress: poi?.address ?? "",
+                rating: poi?.rating ?? 0,
+                reviewCount: poi?.reviewCount ?? 0,
+              });
             }
           }}
         />
@@ -476,7 +787,7 @@ export default function MapScreen({ navigation }) {
               style={({ pressed }) => [
                 styles.chip,
                 styles.shadowButton,
-                { backgroundColor: active ? c.bgActive : c.bg },
+                { backgroundColor: active ? c.markerColor : c.bg },
                 pressed && styles.buttonPressed,
               ]}
               onPress={() => onSelectCategory(c.key)}

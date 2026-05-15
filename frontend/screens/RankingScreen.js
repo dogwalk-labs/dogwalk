@@ -23,7 +23,6 @@ const MOCK_LEADERBOARD = [
 
 const MEDAL_EMOJI = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
-/** 월간 거리·순위 API 연동 전까지 고정 (반려견 정보는 프로필에서 로드) */
 const MY_RANK_METRICS = { distanceKm: 12, monthlyRank: 97 };
 
 export default function RankingScreen() {
@@ -86,7 +85,7 @@ export default function RankingScreen() {
         <View style={styles.modeChip}>
           <Text style={styles.modeChipText}>이달의 산책왕</Text>
         </View>
-        <Text style={styles.resetCaption}> 
+        <Text style={styles.resetCaption}>
           이달의 산책왕 랭킹은 매달 1일 00:00시에 리셋됩니다.
         </Text>
 
@@ -102,6 +101,7 @@ export default function RankingScreen() {
                 </Text>
               ) : null}
             </View>
+
             <View style={styles.rankBody}>
               <Text style={styles.rankNameLine} numberOfLines={1}>
                 <Text style={styles.rankName}>{row.name}</Text>
@@ -111,19 +111,35 @@ export default function RankingScreen() {
                 {row.breed}, {row.age}세
               </Text>
             </View>
-            <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.85}>
+
+            <TouchableOpacity
+              style={styles.outlineBtn}
+              activeOpacity={0.85}
+              onPress={() =>
+                navigation.navigate("UserProfile", {
+                  userId: row.id,
+                  userName: row.name,
+                  dogName: row.name,
+                  dogBreed: row.breed,
+                  dogAge: row.age,
+                  distanceKm: row.distanceKm,
+                })
+              }
+            >
               <Text style={styles.outlineBtnText}>프로필 보기</Text>
             </TouchableOpacity>
           </View>
         ))}
 
         <Text style={styles.sectionTitle}>내 순위</Text>
+
         <View style={styles.rankCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarEmoji}>🐶</Text>
             </View>
           </View>
+
           <View style={styles.rankBody}>
             <Text style={styles.rankNameLine} numberOfLines={1}>
               <Text style={styles.rankName}>{myDogName}</Text>
@@ -133,6 +149,7 @@ export default function RankingScreen() {
               {myDogBreed} / {myDogAgeLabel}
             </Text>
           </View>
+
           <View style={styles.myRankPill}>
             <Text style={styles.myRankPillText}>이달의 {MY_RANK_METRICS.monthlyRank}위</Text>
           </View>

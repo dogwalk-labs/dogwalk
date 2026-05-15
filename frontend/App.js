@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -10,13 +10,16 @@ import RouteSelectScreen from "./screens/RouteSelectScreen";
 import WalkMapScreen from "./screens/WalkMapScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 
+import PlaceReviewScreen from "./screens/PlaceReviewScreen";
+import PlaceReviewScreen2 from "./screens/PlaceReviewScreen2";
+
 import RankingScreen from "./screens/RankingScreen";
 import CommunityScreen from "./screens/CommunityScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import ProfileEditScreen from "./screens/ProfileEditScreen";
+import UserPublicProfileScreen from "./screens/UserPublicProfileScreen";
 
 import BottomTabBar from "./components/BottomTabBar";
-import { API_BASE_URL } from "./config/config";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -30,6 +33,18 @@ function WalkStack() {
       <Stack.Screen name="TimeSelect" component={TimeSelectScreen} />
       <Stack.Screen name="RouteSelect" component={RouteSelectScreen} />
       <Stack.Screen name="WalkMap" component={WalkMapScreen} />
+
+      <Stack.Screen name="PlaceReview" component={PlaceReviewScreen} />
+      <Stack.Screen name="PlaceReview2" component={PlaceReviewScreen2} />
+    </Stack.Navigator>
+  );
+}
+
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
     </Stack.Navigator>
   );
 }
@@ -48,26 +63,13 @@ function MainTabs() {
   );
 }
 
-function ProfileStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-    </Stack.Navigator>
-  );
-}
-
 export default function App() {
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/users/upsert-temp`, { method: "POST" })
-      .catch(() => {});
-  }, []);
-
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
+        <RootStack.Screen name="UserProfile" component={UserPublicProfileScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
