@@ -34,7 +34,6 @@ def create_path(
     user_id: str = Depends(get_current_user_id),
 ):
     try:
-        # ✅ users 테이블에 없으면 자동 생성
         db.execute(
             text("""
                 INSERT INTO users (id)
@@ -44,7 +43,6 @@ def create_path(
             {"id": user_id},
         )
 
-        # ⭐ 유사 경로 체크 (현재는 유지)
         if req.geometry and req.geometry.coordinates:
             geometry_json_str = json.dumps(req.geometry.model_dump())
             start_lng, start_lat = req.geometry.coordinates[0]
@@ -81,16 +79,13 @@ def create_path(
                 print(f"### path 재사용 (경로 모양 일치): {existing_id}")
                 return {"pathId": existing_id}
 
-        # ✅ 새 path 생성
         path_id = str(uuid4())
-
         meta_dict = req.meta or {}
 
         if req.route_id:
             meta_dict["route_id"] = req.route_id
 
         meta_json = json.dumps(meta_dict)
-
         geometry_json = (
             json.dumps(req.geometry.model_dump())
             if req.geometry
@@ -142,9 +137,7 @@ def create_path(
         )
 
         db.commit()
-
         print(f"### path 새로 생성: {path_id}")
-
         return {"pathId": path_id}
 
     except HTTPException:
@@ -152,13 +145,8 @@ def create_path(
 
     except Exception as e:
         db.rollback()
-
         print("### path 저장 실패 실제 에러:", repr(e))
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e),
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/liked")
@@ -178,18 +166,120 @@ def get_liked_paths(
                 p.meta,
                 p.created_at
             FROM feedback f
-            JOIN paths p
-              ON p.id = f.path_id
+            JOIN paths p ON p.id = f.path_id
             WHERE
                 f.user_id = :uid
                 AND f.value = 1
             ORDER BY f.created_at DESC
             LIMIT :limit
         """),
-        {
-            "uid": user_id,
-            "limit": limit,
-        },
+        {"uid": user_id, "limit": limit},
     ).mappings().all()
 
     return {"paths": rows}
+
+
+@router.get("/ranking/monthly")
+def get_monthly_ranking(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    rows = db.execute(
+        text("""
+            SELECT
+                u.id,
+                up.nickname,
+                d.name AS dog_name,
+                SUM(p.distance_m) AS total_distance_m,
+                RANK() OVER (ORDER BY SUM(p.distance_m) DESC) AS rank
+            FROM paths p
+            JOIN users u ON u.id = p.user_id
+            LEFT JOIN user_profiles up ON up.user_id = u.id
+            LEFT JOIN dogs d ON d.user_id = u.id
+            WHERE
+                DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
+            GROUP BY u.id, up.nickname, d.name
+            ORDER BY total_distance_m DESC
+            LIMIT 10
+        """)
+    ).mappings().all()
+
+    my_row = db.execute(
+        text("""
+            SELECT
+                SUM(p.distance_m) AS total_distance_m,
+                RANK() OVER (ORDER BY SUM(p.distance_m) DESC) AS rank
+            FROM paths p
+            WHERE
+                p.user_id = :uid
+                AND DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
+            GROUP BY p.user_id
+        """),
+        {"uid": user_id},
+    ).mappings().fetchone()
+
+    return {
+        "leaderboard": [
+            {
+                "id": str(r["id"]),
+                "nickname": r["nickname"] or "이름 없음",
+                "dogName": r["dog_name"] or "반려견",
+                "distanceKm": round(r["total_distance_m"] / 1000, 1),
+                "rank": r["rank"],
+            }
+            for r in rows
+        ],
+        "myStats": {
+            "distanceKm": round(my_row["total_distance_m"] / 1000, 1) if my_row else 0,
+            "rank": my_row["rank"] if my_row else "-",
+        },
+    }
+    
+@router.get("/stats")
+def get_walk_stats(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    weekly = db.execute(
+        text("""
+            SELECT
+                COALESCE(SUM(distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+            FROM paths
+            WHERE
+                user_id = :uid
+                AND created_at >= date_trunc('week', NOW())
+        """),
+        {"uid": user_id},
+    ).mappings().fetchone()
+
+    monthly = db.execute(
+        text("""
+            SELECT
+                COALESCE(SUM(distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+            FROM paths
+            WHERE
+                user_id = :uid
+                AND created_at >= date_trunc('month', NOW())
+        """),
+        {"uid": user_id},
+    ).mappings().fetchone()
+
+    def fmt_duration(sec):
+        h = int(sec) // 3600
+        m = (int(sec) % 3600) // 60
+        if h > 0:
+            return f"{h}시간 {m}분"
+        return f"{m}분"
+
+    return {
+        "weekly": {
+            "distanceKm": round(weekly["total_distance_m"] / 1000, 1),
+            "duration": fmt_duration(weekly["total_duration_sec"]),
+        },
+        "monthly": {
+            "distanceKm": round(monthly["total_distance_m"] / 1000, 1),
+            "duration": fmt_duration(monthly["total_duration_sec"]),
+        },
+    }

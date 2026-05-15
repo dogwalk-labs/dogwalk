@@ -60,6 +60,16 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    # 4) FastAPI 서버
+  fastapi:
+    build:
+      context: ./backend/api-python
+    container_name: dogwalk-fastapi
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
 
   #db:
    # image: postgis/postgis:16-3.4

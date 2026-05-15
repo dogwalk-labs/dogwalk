@@ -1,12 +1,13 @@
 import React, { useCallback, useState } from "react";
 import { API_BASE_URL } from "../config/config";
-import { getCurrentUser } from "../auth/authStorage";
+import { getCurrentUser, getAccessToken } from "../auth/authStorage";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [profile, setProfile] = useState(null);
+  const [walkStats, setWalkStats] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -15,16 +16,23 @@ export default function ProfileScreen() {
       const loadProfile = async () => {
         try {
           const user = await getCurrentUser();
-
           if (!user) return;
 
+          const token = await getAccessToken();
+
           const res = await fetch(`${API_BASE_URL}/profiles/me/${user.id}`);
-
           const data = await res.json();
-
           console.log("profile data:", data);
 
-          if (!cancelled) setProfile(data);
+          const statsRes = await fetch(`${API_BASE_URL}/paths/stats`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const statsData = await statsRes.json();
+
+          if (!cancelled) {
+            setProfile(data);
+            setWalkStats(statsData);
+          }
         } catch (e) {
           console.log(e);
         }
@@ -37,7 +45,6 @@ export default function ProfileScreen() {
       };
     }, [])
   );
-
 
   return (
     <View style={styles.container}>
@@ -55,9 +62,9 @@ export default function ProfileScreen() {
             <View style={styles.avatarBody} />
           </View>
           <View style={styles.cardContent}>
-           <Text style={styles.nameText}>
-             {profile?.user_profile?.nickname ?? "닉네임"}
-           </Text>
+            <Text style={styles.nameText}>
+              {profile?.user_profile?.nickname ?? "닉네임"}
+            </Text>
             <Text style={styles.infoText}>
               {profile?.user_profile?.gender === "female" ? "여자" : "남자"}
               {" / "}
@@ -102,15 +109,19 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>🔥 '둥이'의 산책기록</Text>
+        <Text style={styles.sectionTitle}>🔥 '{profile?.dog?.name ?? "반려견"}'의 산책기록</Text>
         <View style={styles.walkCard}>
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>주간</Text>
-            <Text style={styles.recordValue}>3.3km, 4시간 52분</Text>
+            <Text style={styles.recordValue}>
+              {walkStats?.weekly?.distanceKm ?? 0}km, {walkStats?.weekly?.duration ?? "0분"}
+            </Text>
           </View>
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>월간</Text>
-            <Text style={styles.recordValue}>16.2km, 16시간 17분</Text>
+            <Text style={styles.recordValue}>
+              {walkStats?.monthly?.distanceKm ?? 0}km, {walkStats?.monthly?.duration ?? "0분"}
+            </Text>
           </View>
         </View>
       </ScrollView>

@@ -667,6 +667,7 @@ export default function WalkMapScreen({ navigation, route }) {
       </View>
 
       <WalkControlBar
+        coords={coords}
         onEndWalk={({ elapsedSeconds, distanceKm }) => {
           setLastWalkStats({ elapsedSeconds, distanceKm });
           setShowEndConfirm(true);

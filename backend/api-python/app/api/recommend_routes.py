@@ -151,7 +151,7 @@ async def recommend(
             "tags": req.tags,
         }
 
-        url = "http://127.0.0.1:8080/recommend"
+        url = "http://dogwalk-api:8080/recommend"
 
         try:
             body = json.dumps(payload).encode("utf-8")

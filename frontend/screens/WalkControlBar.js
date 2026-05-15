@@ -1,27 +1,58 @@
 //WalkControlBar.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 const BROWN = "#8E6A3D";
 const TEXT = "#2B2B2B";
 
-/**
- * 산책 진행 중 하단 바: 일시정지 | 경과 시간/거리 | 산책 종료
- */
-export default function WalkControlBar({ onEndWalk }) {
+function calcDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export default function WalkControlBar({ onEndWalk, coords }) {
   const [isPaused, setIsPaused] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [distanceKm, setDistanceKm] = useState(0);
+  const prevCoords = useRef(null);
 
+  // 타이머
   useEffect(() => {
     if (isPaused) return;
     const id = setInterval(() => {
       setElapsedSeconds((s) => s + 1);
-      setDistanceKm((d) => Math.round((d + 0.00017) * 100) / 100);
     }, 1000);
     return () => clearInterval(id);
   }, [isPaused]);
+
+  // GPS 실제 거리 계산
+  useEffect(() => {
+    if (!coords || isPaused) return;
+
+    if (prevCoords.current) {
+      const d = calcDistanceKm(
+        prevCoords.current.latitude,
+        prevCoords.current.longitude,
+        coords.latitude,
+        coords.longitude
+      );
+      // GPS 오차 무시 (3m 이하)
+      if (d > 0.003) {
+        setDistanceKm((prev) => Math.round((prev + d) * 1000) / 1000);
+      }
+    }
+
+    prevCoords.current = coords;
+  }, [coords, isPaused]);
 
   const formatTime = (totalSeconds) => {
     const m = Math.floor(totalSeconds / 60);
@@ -31,22 +62,23 @@ export default function WalkControlBar({ onEndWalk }) {
 
   return (
     <View style={styles.walkBar}>
-      <Pressable style={styles.walkBarBtnWrap} onPress={() => setIsPaused((p) => !p)}>
+      <Pressable
+        style={styles.walkBarBtnWrap}
+        onPress={() => setIsPaused((p) => !p)}
+      >
         <View style={styles.walkBarCircleBtn}>
-          <Ionicons
-            name={isPaused ? "play" : "pause"}
-            size={24}
-            color="#fff"
-          />
+          <Ionicons name={isPaused ? "play" : "pause"} size={24} color="#fff" />
         </View>
         <Text style={styles.walkBarLabel}>
           {isPaused ? "재개" : "일시정지"}
         </Text>
       </Pressable>
+
       <View style={styles.walkBarCenter}>
         <Text style={styles.walkBarTime}>{formatTime(elapsedSeconds)}</Text>
-        <Text style={styles.walkBarDistance}>{distanceKm.toFixed(1)}km</Text>
+        <Text style={styles.walkBarDistance}>{distanceKm.toFixed(2)}km</Text>
       </View>
+
       <Pressable
         style={styles.walkBarBtnWrap}
         onPress={() => onEndWalk({ elapsedSeconds, distanceKm })}
