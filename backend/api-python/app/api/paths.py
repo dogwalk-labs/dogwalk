@@ -283,3 +283,52 @@ def get_walk_stats(
             "duration": fmt_duration(monthly["total_duration_sec"]),
         },
     }
+    
+@router.get("/stats/user/{target_user_id}")
+def get_user_walk_stats(
+    target_user_id: str,
+    db: Session = Depends(get_db),
+):
+    weekly = db.execute(
+        text("""
+            SELECT
+                COALESCE(SUM(distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+            FROM paths
+            WHERE
+                user_id = :uid
+                AND created_at >= date_trunc('week', NOW())
+        """),
+        {"uid": target_user_id},
+    ).mappings().fetchone()
+
+    monthly = db.execute(
+        text("""
+            SELECT
+                COALESCE(SUM(distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+            FROM paths
+            WHERE
+                user_id = :uid
+                AND created_at >= date_trunc('month', NOW())
+        """),
+        {"uid": target_user_id},
+    ).mappings().fetchone()
+
+    def fmt_duration(sec):
+        h = int(sec) // 3600
+        m = (int(sec) % 3600) // 60
+        if h > 0:
+            return f"{h}시간 {m}분"
+        return f"{m}분"
+
+    return {
+        "weekly": {
+            "distanceKm": round(weekly["total_distance_m"] / 1000, 1),
+            "duration": fmt_duration(weekly["total_duration_sec"]),
+        },
+        "monthly": {
+            "distanceKm": round(monthly["total_distance_m"] / 1000, 1),
+            "duration": fmt_duration(monthly["total_duration_sec"]),
+        },
+    }

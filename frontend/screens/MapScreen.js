@@ -3,11 +3,8 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-import { POI_SERVICE_BASE_URL } from "../config/config";
-import {
-  getAverageRatingByPoiId,
-  getReviewCountByPoiId,
-} from "./reviewStore";
+import { POI_SERVICE_BASE_URL, API_BASE_URL } from "../config/config";
+import { getAccessToken } from "../auth/authStorage";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
@@ -492,6 +489,7 @@ export default function MapScreen({ navigation }) {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoriteOverrides, setFavoriteOverrides] = useState({});
   const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+  const [reviewStats, setReviewStats] = useState({});
 
   useFocusEffect(
     useCallback(() => {
@@ -560,26 +558,71 @@ export default function MapScreen({ navigation }) {
 
     loadPois();
   }, []);
+  useEffect(() => {
+    if (poisRaw.length === 0) return;
+
+    const loadStats = async () => {
+      const stats = {};
+      await Promise.all(
+        flattenPois(poisRaw).map(normalizePoi).filter(
+          (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category
+        ).map(async (p) => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/places/${p.id}/stats`);
+            const data = await res.json();
+            stats[p.id] = { rating: data.avgRating ?? 0, reviewCount: data.reviewCount ?? 0 };
+          } catch {
+            stats[p.id] = { rating: 0, reviewCount: 0 };
+          }
+        })
+      );
+      setReviewStats(stats);
+    };
+
+    loadStats();
+  }, [poisRaw, reviewRefreshKey]);
+
+  // 즐겨찾기 목록 로드
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+          const token = await getAccessToken();
+          console.log("### 즐겨찾기 로드 시작, token:", token ? "있음" : "없음");
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/places/my-favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("### 즐겨찾기 응답 상태:", res.status);
+      const data = await res.json();
+      console.log("### 즐겨찾기 데이터:", data);
+      const favMap = {};
+      (data.favorites ?? []).forEach((poiId) => {
+        favMap[poiId] = true;
+      });
+      setFavoriteOverrides(favMap);
+    } catch (e) {
+      console.error("즐겨찾기 로드 실패:", e);
+    }
+  };
+  loadFavorites();
+}, []);
 
   const allPois = useMemo(() => {
     return flattenPois(poisRaw)
       .map(normalizePoi)
-      .map((p) => {
-        const localReviewCount = getReviewCountByPoiId(p.id);
-        const localAvgRating = getAverageRatingByPoiId(p.id);
-
-        return {
+      .map((p) => ({
           ...p,
           favorite:
             favoriteOverrides[p.id] !== undefined
               ? favoriteOverrides[p.id]
               : p.favorite,
-          rating: localReviewCount > 0 ? localAvgRating : p.rating,
-          reviewCount: localReviewCount > 0 ? localReviewCount : p.reviewCount,
-        };
-      })
+          // reviewStore 대신 reviewStats에서 가져오기
+          rating: reviewStats[p.id]?.rating ?? p.rating,
+          reviewCount: reviewStats[p.id]?.reviewCount ?? p.reviewCount,
+    })) 
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category);
-  }, [poisRaw, favoriteOverrides, reviewRefreshKey]);
+  }, [poisRaw, favoriteOverrides, reviewStats]);
 
   const filteredPois = useMemo(() => {
     let list = allPois;
@@ -649,19 +692,36 @@ export default function MapScreen({ navigation }) {
   }, []);
 
   const toggleFavoriteById = useCallback(
-    (poiId) => {
-      const target = allPois.find((p) => p.id === poiId);
+  async (poiId) => {
+    const target = allPois.find((p) => p.id === poiId);
+    const currentFav =
+      favoriteOverrides[poiId] !== undefined
+        ? favoriteOverrides[poiId]
+        : target?.favorite;
+    const newFav = !currentFav;
 
-      setFavoriteOverrides((prev) => ({
-        ...prev,
-        [poiId]: !(prev[poiId] !== undefined ? prev[poiId] : target?.favorite),
-      }));
+    // 즉시 UI 업데이트
+    setFavoriteOverrides((prev) => ({ ...prev, [poiId]: newFav }));
+    setSelectedPoiId(poiId);
 
-      setSelectedPoiId(poiId);
-    },
-    [allPois]
-  );
-
+    // DB 저장
+    try {
+      const token = await getAccessToken();
+      console.log("### 즐겨찾기 토글:", poiId, "추가:", newFav);
+      const res = await fetch(`${API_BASE_URL}/places/${poiId}/favorite`, {
+        method: newFav ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("### 즐겨찾기 저장 응답:", res.status);
+      const data = await res.json();
+      console.log("### 즐겨찾기 저장 결과:", data);
+    } catch (e) {
+      console.error("즐겨찾기 저장 실패:", e);
+      setFavoriteOverrides((prev) => ({ ...prev, [poiId]: currentFav }));
+    }
+  },
+  [allPois, favoriteOverrides]
+);
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>

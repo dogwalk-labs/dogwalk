@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   SafeAreaView,
@@ -13,7 +12,8 @@ import {
   Keyboard,
   Alert,
 } from "react-native";
-import { addReview } from "./reviewStore";
+import { API_BASE_URL } from "../config/config"; // 추가 (reviewStore 제거)
+import { getAccessToken } from "../auth/authStorage"; // 추가
 
 const BG = "#FFFFFF";
 const BROWN = "#B08B5A";
@@ -28,35 +28,51 @@ export default function PlaceReviewScreen2({ navigation, route }) {
 
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false); // 추가 (저장 중 상태)
 
   const canSubmit = rating > 0 && content.trim().length > 0;
 
-  const saveReview = () => {
-    if (!canSubmit) return;
+  // addReview → API 호출로 변경
+  const saveReview = async () => {
+    if (!canSubmit || saving) return;
 
-    const newReview = {
-      id: String(Date.now()),
-      poiId,
-      userName: "나",
-      date: "방금 전",
-      rating,
-      content: content.trim(),
-      profileImage: null,
-    };
+    try {
+      setSaving(true);
+      const token = await getAccessToken(); // 추가
 
-    addReview(poiId, newReview);
-    Keyboard.dismiss();
+      // reviewStore.addReview → fetch API로 변경
+      const res = await fetch(`${API_BASE_URL}/places/${poiId}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rating,
+          content: content.trim(),
+        }),
+      });
 
-    navigation.navigate({
-      name: "PlaceReview",
-      params: {
-        poiId,
-        poiTitle,
-        poiAddress,
-        refreshKey: Date.now(),
-      },
-      merge: true,
-    });
+      const data = await res.json();
+
+      // 에러 처리 추가
+      if (!res.ok) {
+        Alert.alert("오류", data.detail ?? "리뷰 저장에 실패했어요.");
+        return;
+      }
+
+      Keyboard.dismiss();
+      navigation.navigate({
+        name: "PlaceReview",
+        params: { poiId, poiTitle, poiAddress },
+        merge: true,
+      });
+    } catch (e) {
+      console.error("리뷰 저장 실패:", e);
+      Alert.alert("오류", "네트워크 오류가 발생했어요.");
+    } finally {
+      setSaving(false); // 추가
+    }
   };
 
   const handleSubmit = () => {
@@ -66,14 +82,8 @@ export default function PlaceReviewScreen2({ navigation, route }) {
       "리뷰 등록하기",
       "리뷰는 한 번 작성하면 수정/삭제가 불가능하다멍!",
       [
-        {
-          text: "취소하기",
-          style: "cancel",
-        },
-        {
-          text: "등록하기",
-          onPress: saveReview,
-        },
+        { text: "취소하기", style: "cancel" },
+        { text: "등록하기", onPress: saveReview },
       ]
     );
   };
@@ -87,17 +97,12 @@ export default function PlaceReviewScreen2({ navigation, route }) {
         >
           <View style={styles.header}>
             <Pressable
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.buttonPressed,
-              ]}
+              style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
               onPress={() => navigation.goBack()}
             >
               <Text style={styles.backText}>‹</Text>
             </Pressable>
-
             <Text style={styles.headerTitle}>리뷰 작성하기</Text>
-
             <View style={styles.headerRight} />
           </View>
 
@@ -108,26 +113,13 @@ export default function PlaceReviewScreen2({ navigation, route }) {
             </View>
 
             <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => {
-                const active = star <= rating;
-
-                return (
-                  <Pressable
-                    key={star}
-                    hitSlop={8}
-                    onPress={() => setRating(star)}
-                  >
-                    <Text
-                      style={[
-                        styles.star,
-                        { color: active ? YELLOW : GRAY_STAR },
-                      ]}
-                    >
-                      ★
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable key={star} hitSlop={8} onPress={() => setRating(star)}>
+                  <Text style={[styles.star, { color: star <= rating ? YELLOW : GRAY_STAR }]}>
+                    ★
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             <TextInput
@@ -143,15 +135,18 @@ export default function PlaceReviewScreen2({ navigation, route }) {
 
             <View style={styles.bottomArea}>
               <Pressable
-                disabled={!canSubmit}
+                disabled={!canSubmit || saving} // saving 조건 추가
                 style={({ pressed }) => [
                   styles.submitButton,
-                  !canSubmit && styles.submitButtonDisabled,
+                  (!canSubmit || saving) && styles.submitButtonDisabled,
                   pressed && canSubmit && styles.buttonPressed,
                 ]}
                 onPress={handleSubmit}
               >
-                <Text style={styles.submitButtonText}>리뷰 등록하기</Text>
+                {/* 저장 중일 때 텍스트 변경 추가 */}
+                <Text style={styles.submitButtonText}>
+                  {saving ? "저장 중..." : "리뷰 등록하기"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -162,30 +157,16 @@ export default function PlaceReviewScreen2({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
+  safeArea: { flex: 1, backgroundColor: BG },
+  container: { flex: 1, backgroundColor: BG },
   header: {
     height: 58,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    justifyContent: "center",
-  },
-  backText: {
-    fontSize: 36,
-    color: "#B4A89A",
-    lineHeight: 38,
-  },
+  backButton: { width: 42, height: 42, justifyContent: "center" },
+  backText: { fontSize: 36, color: "#B4A89A", lineHeight: 38 },
   headerTitle: {
     flex: 1,
     textAlign: "center",
@@ -193,40 +174,18 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#6F4B23",
   },
-  headerRight: {
-    width: 42,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 34,
-    paddingTop: 20,
-  },
-  placeInfo: {
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  placeName: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: TEXT,
-    marginBottom: 6,
-  },
-  placeAddress: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#8F867C",
-  },
+  headerRight: { width: 42 },
+  content: { flex: 1, paddingHorizontal: 34, paddingTop: 20 },
+  placeInfo: { alignItems: "center", marginTop: 8, marginBottom: 20 },
+  placeName: { fontSize: 22, fontWeight: "900", color: TEXT, marginBottom: 6 },
+  placeAddress: { fontSize: 14, fontWeight: "700", color: "#8F867C" },
   starRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 28,
   },
-  star: {
-    fontSize: 38,
-    marginHorizontal: 1,
-  },
+  star: { fontSize: 38, marginHorizontal: 1 },
   textBox: {
     minHeight: 190,
     borderRadius: 10,
@@ -238,10 +197,7 @@ const styles = StyleSheet.create({
     color: "#5F5147",
     lineHeight: 21,
   },
-  bottomArea: {
-    marginTop: 38,
-    alignItems: "center",
-  },
+  bottomArea: { marginTop: 38, alignItems: "center" },
   submitButton: {
     width: 210,
     height: 52,
@@ -255,17 +211,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
-  submitButtonDisabled: {
-    opacity: 0.55,
-  },
-  submitButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  buttonPressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.9,
-  },
+  submitButtonDisabled: { opacity: 0.55 },
+  submitButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "900" },
+  buttonPressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
 });
-

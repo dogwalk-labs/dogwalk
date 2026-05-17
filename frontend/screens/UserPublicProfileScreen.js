@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator
 } from "react-native";
+import { API_BASE_URL } from "../config/config";
 
 const BG = "#FFFFFF";
 const CARD_BG = "#FFF8E8";
@@ -14,7 +16,44 @@ const BROWN = "#6F4B23";
 const GRAY = "#A59B91";
 
 export default function UserPublicProfileScreen({ navigation, route }) {
-  const userName = route?.params?.userName ?? "유저명";
+  const userId = route?.params?.userId;
+  const [profile, setProfile] = useState(null);
+  const [walkStats, setWalkStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/profiles/me/${userId}`);
+        const data = await res.json();
+        setProfile(data);
+         const statsRes = await fetch(`${API_BASE_URL}/paths/stats/user/${userId}`);
+        const statsData = await statsRes.json();
+        setWalkStats(statsData);
+      } catch (e) {
+        console.error("프로필 로드 실패:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId) loadProfile();
+    else setLoading(false);
+  }, [userId]);
+
+  const userName = profile?.user_profile?.nickname ?? route?.params?.userName ?? "유저명";
+  const dogName = profile?.dog?.name ?? "반려견";
+  const dogBreed = profile?.dog?.breed ?? "-";
+  const dogAge = profile?.dog?.age ?? "-";
+  const dogGender = profile?.dog?.gender === "female" ? "암컷" : "수컷";
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ActivityIndicator style={{ marginTop: 100 }} color={BROWN} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -26,9 +65,7 @@ export default function UserPublicProfileScreen({ navigation, route }) {
         >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>프로필</Text>
-
         <View style={styles.headerRight} />
       </View>
 
@@ -37,38 +74,33 @@ export default function UserPublicProfileScreen({ navigation, route }) {
           <View style={styles.userAvatar}>
             <Text style={styles.userAvatarText}>👤</Text>
           </View>
-
           <View>
             <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.userInfo}>여(만 23세) / 서울시 구로구</Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle}>💕 '{userName}'의 반려동물</Text>
-
         <View style={styles.dogCard}>
           <View style={styles.dogAvatar}>
             <Text style={styles.dogEmoji}>🐶</Text>
           </View>
-
           <View>
-            <Text style={styles.dogName}>유동이</Text>
-            <Text style={styles.dogInfo}>수컷(8세), 리트리버</Text>
-            <Text style={styles.dogInfo}>중성화 여부 O</Text>
+            <Text style={styles.dogName}>{dogName}</Text>
+            <Text style={styles.dogInfo}>{dogGender}({dogAge}세), {dogBreed}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>🔥 '유동이'의 산책기록</Text>
-
+        <Text style={styles.sectionTitle}>🔥 '{dogName}'의 산책기록</Text>
         <View style={styles.recordCard}>
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>주간</Text>
-            <Text style={styles.recordValue}>3.3km, 4시간 52분</Text>
+             <Text style={styles.recordValue}>
+              {walkStats?.weekly?.distanceKm ?? 0}km, {walkStats?.weekly?.duration ?? "0분"}</Text>
           </View>
-
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>월간</Text>
-            <Text style={styles.recordValue}>16.2km, 16시간 17분</Text>
+            <Text style={styles.recordValue}>
+              {walkStats?.monthly?.distanceKm ?? 0}km, {walkStats?.monthly?.duration ?? "0분"}</Text>
           </View>
         </View>
       </View>

@@ -8,6 +8,7 @@ from app.api.recommend_routes import router as recommend_router
 from app.api.users import router as users_router
 from app.core.config import CORS_ALLOW_ORIGINS
 from app.api.profile import router as profile_router
+from app.api.places import router as places_router
 
 
 app = FastAPI(title="dogwalk api")
@@ -28,6 +29,7 @@ app.include_router(users_router)
 app.include_router(feedback_router)
 app.include_router(paths_router)
 app.include_router(recommend_router)
+app.include_router(places_router)
 
 
 @app.get("/")
