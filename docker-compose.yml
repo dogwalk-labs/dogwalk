@@ -66,7 +66,7 @@ services:
       context: ./backend/api-python
     container_name: dogwalk-fastapi
     env_file:
-      - .env
+      - ./backend/api-python/.env
     ports:
       - "8000:8000"
     restart: unless-stopped
