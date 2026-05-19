@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { API_BASE_URL } from "../config/config";
-import { getCurrentUser, getAccessToken } from "../auth/authStorage";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { clearAuthSession, getCurrentUser, getAccessToken } from "../auth/authStorage";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
@@ -45,6 +45,32 @@ export default function ProfileScreen() {
       };
     }, [])
   );
+
+  const handleLogout = async () => {
+    try {
+      await clearAuthSession();
+
+      let rootNavigation = navigation;
+      while (rootNavigation.getParent()) {
+        rootNavigation = rootNavigation.getParent();
+      }
+
+      rootNavigation.reset({
+        index: 0,
+        routes: [{ name: "Onboarding" }],
+      });
+    } catch (e) {
+      console.log(e);
+      Alert.alert("오류", "로그아웃 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  const showLogoutConfirm = () => {
+    Alert.alert("로그아웃", "로그아웃 하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      { text: "로그아웃", style: "destructive", onPress: handleLogout },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -124,6 +150,14 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          activeOpacity={0.8}
+          onPress={showLogoutConfirm}
+        >
+          <Text style={styles.logoutButtonText}>로그아웃</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -274,5 +308,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "600",
     letterSpacing: -0.5,
+  },
+  logoutButton: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D4C4A8",
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 40,
+    paddingVertical: 16,
+  },
+  logoutButtonText: {
+    color: "#855617",
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: -0.3,
   },
 });
