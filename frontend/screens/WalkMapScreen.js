@@ -514,7 +514,10 @@ export default function WalkMapScreen({ navigation, route }) {
   useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
 
-    const js = `window.setMyLocation(${coords.latitude}, ${coords.longitude}); true;`;
+    const js = `window.setMyLocation(${coords.latitude}, ${coords.longitude}); 
+                window.updateRouteProgress(${coords.latitude}, ${coords.longitude})
+                true;`;
+                
     webviewRef.current.injectJavaScript(js);
     setIsMyLocationActive(true);
   }, [coords, mapReady]);
