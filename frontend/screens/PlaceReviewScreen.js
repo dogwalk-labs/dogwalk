@@ -69,7 +69,13 @@ export default function PlaceReviewScreen({ navigation, route }) {
       <View style={styles.header}>
         <Pressable
           style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
-          onPress={() => navigation.popToTop()}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.popToTop();
+            }
+          }}
         >
           <Text style={styles.backText}>‹</Text>
         </Pressable>
