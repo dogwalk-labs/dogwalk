@@ -318,6 +318,7 @@ const makeHtml = () => `
     var fullPath = [];
     var furthestPassedIndex = 0;
     var didInitialCenter = false;
+    var walkStartMapLevel = null;
     var progressStarted = false;
 
     var arrowOverlays = [];
@@ -799,15 +800,19 @@ const makeHtml = () => `
       window.ReactNativeWebView && window.ReactNativeWebView.postMessage("Map created OK");
     }
 
-    window.setMyLocation = function(lat, lng, heading) {
+    window.setMyLocation = function(lat, lng, heading, shouldCenter) {
       try {
         if (!map || !window.kakao || !window.kakao.maps) return;
 
         var pos = new kakao.maps.LatLng(lat, lng);
 
-        if (!didInitialCenter) {
+        if (shouldCenter) {
+          map.setCenter(pos);
+          map.setLevel(walkStartMapLevel !== null ? walkStartMapLevel : 2);
+        } else if (!didInitialCenter) {
           map.setCenter(pos);
           didInitialCenter = true;
+          walkStartMapLevel = map.getLevel();
         }
 
         var content = getUserOverlayContent(heading);
@@ -1172,13 +1177,12 @@ export default function WalkMapScreen({ navigation, route }) {
     if (!coords || !mapReady || !webviewRef.current) return;
 
     const js = `
-      window.setMyLocation(${coords.latitude}, ${coords.longitude}, ${coords.heading || 0});
+      window.setMyLocation(${coords.latitude}, ${coords.longitude}, ${coords.heading || 0}, false);
       window.updateRouteProgress(${coords.latitude}, ${coords.longitude});
       true;
     `;
 
     webviewRef.current.injectJavaScript(js);
-    setIsMyLocationActive(true);
   }, [coords, mapReady]);
 
   useEffect(() => {
@@ -1242,7 +1246,7 @@ export default function WalkMapScreen({ navigation, route }) {
     if (!coords || !mapReady || !webviewRef.current) return;
 
     const js = `
-      window.setMyLocation(${coords.latitude}, ${coords.longitude}, ${coords.heading || 0});
+      window.setMyLocation(${coords.latitude}, ${coords.longitude}, ${coords.heading || 0}, true);
       true;
     `;
     webviewRef.current.injectJavaScript(js);
