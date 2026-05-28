@@ -37,10 +37,13 @@ async function saveWalkAndFeedback(selectedRoute, walkStats, value, tags = []) {
         ? walkStats.elapsedSeconds
         : selectedRoute?.durationSec ?? 0;
 
+
     const pathPayload = {
       minutes: selectedRoute?.minutes ?? 30,
       distance_m: distanceM,
       duration_sec: durationSec,
+      actual_distance_m: Math.round((walkStats?.distanceKm ?? 0) * 1000),
+      actual_duration_sec: walkStats?.elapsedSeconds ?? 0,
       geometry: selectedRoute?.geometry
         ? {
             type: "LineString",

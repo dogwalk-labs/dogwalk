@@ -41,6 +41,7 @@ export default function RankingScreen() {
             headers: { Authorization: `Bearer ${token}` },
           });
           const rankData = await rankRes.json();
+          console.log("### 랭킹 데이터:", JSON.stringify(rankData.myStats));
 
           const profileRes = await fetch(`${API_BASE_URL}/profiles/me/${user.id}`);
           const profileData = await profileRes.json();

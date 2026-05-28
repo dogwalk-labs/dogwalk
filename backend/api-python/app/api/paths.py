@@ -22,6 +22,8 @@ class CreatePathRequest(BaseModel):
     minutes: int
     distance_m: int
     duration_sec: int
+    actual_distance_m: int | None = None
+    actual_duration_sec: int | None = None
     geometry: Geometry | None = None
     meta: dict | None = None
     route_id: str | None = None
@@ -92,11 +94,6 @@ def create_path(
             else None
         )
 
-        print("### path insert 시작")
-        print("### user_id:", user_id)
-        print("### distance:", req.distance_m)
-        print("### duration:", req.duration_sec)
-
         db.execute(
             text("""
                 INSERT INTO paths (
@@ -105,6 +102,8 @@ def create_path(
                     minutes,
                     distance_m,
                     duration_sec,
+                    actual_distance_m,
+                    actual_duration_sec,
                     geom,
                     meta
                 )
@@ -114,6 +113,8 @@ def create_path(
                     :min,
                     :dist,
                     :dur,
+                    :actual_dist,
+                    :actual_dur,
                     CASE
                         WHEN :geometry IS NOT NULL
                         THEN ST_SetSRID(
@@ -131,6 +132,8 @@ def create_path(
                 "min": int(req.minutes),
                 "dist": int(req.distance_m),
                 "dur": int(req.duration_sec),
+                "actual_dist": int(req.actual_distance_m or 0),
+                "actual_dur": int(req.actual_duration_sec or 0),
                 "geometry": geometry_json,
                 "meta": meta_json,
             },
@@ -190,8 +193,8 @@ def get_monthly_ranking(
                 u.id,
                 up.nickname,
                 d.name AS dog_name,
-                SUM(p.distance_m) AS total_distance_m,
-                RANK() OVER (ORDER BY SUM(p.distance_m) DESC) AS rank
+                SUM(p.actual_distance_m) AS total_distance_m,
+                RANK() OVER (ORDER BY SUM(p.actual_distance_m) DESC) AS rank
             FROM paths p
             JOIN users u ON u.id = p.user_id
             LEFT JOIN user_profiles up ON up.user_id = u.id
@@ -206,14 +209,17 @@ def get_monthly_ranking(
 
     my_row = db.execute(
         text("""
-            SELECT
-                SUM(p.distance_m) AS total_distance_m,
-                RANK() OVER (ORDER BY SUM(p.distance_m) DESC) AS rank
-            FROM paths p
-            WHERE
-                p.user_id = :uid
-                AND DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
-            GROUP BY p.user_id
+            SELECT rank, total_distance_m FROM (
+                SELECT
+                    p.user_id,
+                    SUM(p.actual_distance_m) AS total_distance_m,
+                    RANK() OVER (ORDER BY SUM(p.actual_distance_m) DESC) AS rank
+                FROM paths p
+                WHERE
+                    DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
+                GROUP BY p.user_id
+            ) ranked
+            WHERE user_id = :uid
         """),
         {"uid": user_id},
     ).mappings().fetchone()
@@ -224,17 +230,18 @@ def get_monthly_ranking(
                 "id": str(r["id"]),
                 "nickname": r["nickname"] or "이름 없음",
                 "dogName": r["dog_name"] or "반려견",
-                "distanceKm": round(r["total_distance_m"] / 1000, 1),
+                 "distanceKm": round((r["total_distance_m"] or 0) / 1000, 1),
                 "rank": r["rank"],
             }
             for r in rows
         ],
         "myStats": {
-            "distanceKm": round(my_row["total_distance_m"] / 1000, 1) if my_row else 0,
+            "distanceKm": round((my_row["total_distance_m"] or 0) / 1000, 1) if my_row else 0,
             "rank": my_row["rank"] if my_row else "-",
         },
     }
-    
+
+
 @router.get("/stats")
 def get_walk_stats(
     db: Session = Depends(get_db),
@@ -243,8 +250,8 @@ def get_walk_stats(
     weekly = db.execute(
         text("""
             SELECT
-                COALESCE(SUM(distance_m), 0) AS total_distance_m,
-                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+                COALESCE(SUM(actual_distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(actual_duration_sec), 0) AS total_duration_sec
             FROM paths
             WHERE
                 user_id = :uid
@@ -256,8 +263,8 @@ def get_walk_stats(
     monthly = db.execute(
         text("""
             SELECT
-                COALESCE(SUM(distance_m), 0) AS total_distance_m,
-                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+                COALESCE(SUM(actual_distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(actual_duration_sec), 0) AS total_duration_sec
             FROM paths
             WHERE
                 user_id = :uid
@@ -283,7 +290,8 @@ def get_walk_stats(
             "duration": fmt_duration(monthly["total_duration_sec"]),
         },
     }
-    
+
+
 @router.get("/stats/user/{target_user_id}")
 def get_user_walk_stats(
     target_user_id: str,
@@ -292,8 +300,8 @@ def get_user_walk_stats(
     weekly = db.execute(
         text("""
             SELECT
-                COALESCE(SUM(distance_m), 0) AS total_distance_m,
-                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+                COALESCE(SUM(actual_distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(actual_duration_sec), 0) AS total_duration_sec
             FROM paths
             WHERE
                 user_id = :uid
@@ -305,8 +313,8 @@ def get_user_walk_stats(
     monthly = db.execute(
         text("""
             SELECT
-                COALESCE(SUM(distance_m), 0) AS total_distance_m,
-                COALESCE(SUM(duration_sec), 0) AS total_duration_sec
+                COALESCE(SUM(actual_distance_m), 0) AS total_distance_m,
+                COALESCE(SUM(actual_duration_sec), 0) AS total_duration_sec
             FROM paths
             WHERE
                 user_id = :uid

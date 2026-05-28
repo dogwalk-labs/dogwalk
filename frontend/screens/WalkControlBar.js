@@ -45,8 +45,8 @@ export default function WalkControlBar({ onEndWalk, coords }) {
         coords.latitude,
         coords.longitude
       );
-      // GPS 오차 무시 (3m 이하)
-      if (d > 0.003) {
+      // GPS 오차 무시 (1m 이하)
+      if (d > 0.001) {
         setDistanceKm((prev) => Math.round((prev + d) * 1000) / 1000);
       }
     }

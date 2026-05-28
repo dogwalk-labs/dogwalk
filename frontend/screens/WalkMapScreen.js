@@ -1147,7 +1147,7 @@ export default function WalkMapScreen({ navigation, route }) {
       .map((p) => ({
         ...p,
         favorite:
-          favoriteOverrides[p.id] !== undefined ? favoriteOverrides[p.id] : p.favorite,
+          favoriteOverrides[p.id] !== undefined ? favoriteOverrides[p.id] : false,
         rating: reviewStats[p.id]?.rating ?? p.rating,
         reviewCount: reviewStats[p.id]?.reviewCount ?? p.reviewCount,
       }))
