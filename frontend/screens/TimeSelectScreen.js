@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { API_BASE_URL } from "../config/config";
+import { getCurrentUser } from "../auth/authStorage";
 
 const BG = "#FBF3DD";
 const TEXT = "#2B2B2B";
@@ -9,8 +11,28 @@ const BORDER = "rgba(84, 50, 208, 0.12)";
 
 export default function TimeSelectScreen({ navigation, route }) {
   const [selectedMinutes, setSelectedMinutes] = useState(30);
-
+  const [dogName, setDogName] = useState("둥이");
   const selectedTags = route?.params?.selectedTags ?? [];
+
+  useEffect(() => {
+    const loadDogProfile = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!user) return;
+
+        const res = await fetch(`${API_BASE_URL}/profiles/me/${user.id}`);
+        const data = await res.json();
+
+        if (data?.dog?.name) {
+          setDogName(data.dog.name);
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    loadDogProfile();
+  }, []);
 
   const options = useMemo(
     () => [
@@ -68,7 +90,7 @@ export default function TimeSelectScreen({ navigation, route }) {
         </View>
 
         <Text style={styles.title}>
-          오늘 ‘둥이’의{"\n"}산책 목표 시간은?
+          오늘 ‘{dogName}’의{"\n"}산책 목표 시간은?
         </Text>
 
         <View style={styles.pillArea}>
