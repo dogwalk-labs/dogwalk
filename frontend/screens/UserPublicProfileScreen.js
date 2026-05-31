@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-} from "react-native";import { API_BASE_URL } from "../config/config";
+} from "react-native";
+import { API_BASE_URL } from "../config/config";
 
 const BG = "#FFFFFF";
 const CARD_BG = "#FFF8E8";
