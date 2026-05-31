@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -7,6 +9,7 @@ class UserProfileRequest(BaseModel):
     age: int
     gender: str
     emergency_contact: str
+    image_url: Optional[str] = None
 
 
 class DogRequest(BaseModel):
@@ -15,4 +18,5 @@ class DogRequest(BaseModel):
     age: int
     gender: str
     breed: str
+    image_url: Optional[str] = None
 

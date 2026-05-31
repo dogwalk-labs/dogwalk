@@ -5,9 +5,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator
-} from "react-native";
-import { API_BASE_URL } from "../config/config";
+  ActivityIndicator,
+  Image,
+} from "react-native";import { API_BASE_URL } from "../config/config";
 
 const BG = "#FFFFFF";
 const CARD_BG = "#FFF8E8";
@@ -72,7 +72,11 @@ export default function UserPublicProfileScreen({ navigation, route }) {
       <View style={styles.content}>
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>👤</Text>
+            {profile?.user_profile?.image_url ? (
+              <Image source={{ uri: profile.user_profile.image_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.userAvatarText}>👤</Text>
+            )}
           </View>
           <View>
             <Text style={styles.userName}>{userName}</Text>
@@ -82,7 +86,11 @@ export default function UserPublicProfileScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>💕 '{userName}'의 반려동물</Text>
         <View style={styles.dogCard}>
           <View style={styles.dogAvatar}>
-            <Text style={styles.dogEmoji}>🐶</Text>
+            {profile?.dog?.image_url ? (
+              <Image source={{ uri: profile.dog.image_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.dogEmoji}>🐶</Text>
+            )}
           </View>
           <View>
             <Text style={styles.dogName}>{dogName}</Text>
@@ -161,6 +169,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 18,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    height: "100%",
+    width: "100%",
   },
   userAvatarText: {
     fontSize: 38,
@@ -200,6 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 22,
+    overflow: "hidden",
   },
   dogEmoji: {
     fontSize: 38,

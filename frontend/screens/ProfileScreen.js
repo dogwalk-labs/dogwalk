@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { API_BASE_URL } from "../config/config";
 import { clearAuthSession, getCurrentUser, getAccessToken } from "../auth/authStorage";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
@@ -84,8 +84,14 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>내 프로필</Text>
         <View style={styles.card}>
           <View style={styles.avatarWrap}>
-            <View style={styles.avatarHead} />
-            <View style={styles.avatarBody} />
+            {profile?.user_profile?.image_url ? (
+              <Image source={{ uri: profile.user_profile.image_url }} style={styles.avatarImage} />
+            ) : (
+              <>
+                <View style={styles.avatarHead} />
+                <View style={styles.avatarBody} />
+              </>
+            )}
           </View>
           <View style={styles.cardContent}>
             <Text style={styles.nameText}>
@@ -104,7 +110,7 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
               onPress={() => navigation.navigate("ProfileEdit", { initialTab: "user" })}
             >
-              <Text style={styles.editButtonText}>프로필 수정하기1</Text>
+              <Text style={styles.editButtonText}>프로필 수정하기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -112,9 +118,13 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>💗 나의 반려동물</Text>
         <View style={styles.card}>
           <View style={styles.petAvatarOuter}>
-            <View style={styles.petAvatarInner}>
-              <Text style={styles.petFace}>🐶</Text>
-            </View>
+            {profile?.dog?.image_url ? (
+              <Image source={{ uri: profile.dog.image_url }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.petAvatarInner}>
+                <Text style={styles.petFace}>🐶</Text>
+              </View>
+            )}
           </View>
           <View style={styles.cardContent}>
             <Text style={styles.nameText}>
@@ -218,6 +228,11 @@ const styles = StyleSheet.create({
     height: 120,
     justifyContent: "center",
     marginRight: 18,
+    overflow: "hidden",
+    width: 120,
+  },
+  avatarImage: {
+    height: 120,
     width: 120,
   },
   avatarHead: {
@@ -240,6 +255,7 @@ const styles = StyleSheet.create({
     height: 120,
     justifyContent: "center",
     marginRight: 18,
+    overflow: "hidden",
     width: 120,
   },
   petAvatarInner: {

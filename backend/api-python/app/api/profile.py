@@ -13,9 +13,9 @@ def create_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
     db.execute(
         text("""
             INSERT INTO user_profiles
-            (user_id, nickname, age, gender, emergency_contact)
+            (user_id, nickname, age, gender, emergency_contact, profile_image_url)
             VALUES
-            (:user_id, :nickname, :age, :gender, :emergency_contact)
+            (:user_id, :nickname, :age, :gender, :emergency_contact, :image_url)
         """),
         {
             "user_id": payload.user_id,
@@ -23,6 +23,7 @@ def create_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
             "age": payload.age,
             "gender": payload.gender,
             "emergency_contact": payload.emergency_contact,
+            "image_url": payload.image_url,
         },
     )
 
@@ -36,9 +37,9 @@ def create_dog(payload: DogRequest, db: Session = Depends(get_db)):
     db.execute(
         text("""
             INSERT INTO dogs
-            (user_id, name, age, gender, breed)
+            (user_id, name, age, gender, breed, image_url)
             VALUES
-            (:user_id, :name, :age, :gender, :breed)
+            (:user_id, :name, :age, :gender, :breed, :image_url)
         """),
         {
             "user_id": payload.user_id,
@@ -46,6 +47,7 @@ def create_dog(payload: DogRequest, db: Session = Depends(get_db)):
             "age": payload.age,
             "gender": payload.gender,
             "breed": payload.breed,
+            "image_url": payload.image_url,
         },
     )
 
@@ -62,7 +64,8 @@ def upsert_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
             SET nickname = :nickname,
                 age = :age,
                 gender = :gender,
-                emergency_contact = :emergency_contact
+                emergency_contact = :emergency_contact,
+                profile_image_url = :image_url
             WHERE user_id = :user_id
         """),
         {
@@ -71,6 +74,7 @@ def upsert_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
             "age": payload.age,
             "gender": payload.gender,
             "emergency_contact": payload.emergency_contact,
+            "image_url": payload.image_url,
         },
     )
 
@@ -78,9 +82,9 @@ def upsert_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
         db.execute(
             text("""
                 INSERT INTO user_profiles
-                (user_id, nickname, age, gender, emergency_contact)
+                (user_id, nickname, age, gender, emergency_contact, profile_image_url)
                 VALUES
-                (:user_id, :nickname, :age, :gender, :emergency_contact)
+                (:user_id, :nickname, :age, :gender, :emergency_contact, :image_url)
             """),
             {
                 "user_id": payload.user_id,
@@ -88,6 +92,7 @@ def upsert_user_profile(payload: UserProfileRequest, db: Session = Depends(get_d
                 "age": payload.age,
                 "gender": payload.gender,
                 "emergency_contact": payload.emergency_contact,
+                "image_url": payload.image_url,
             },
         )
 
@@ -104,7 +109,8 @@ def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
             SET name = :name,
                 age = :age,
                 gender = :gender,
-                breed = :breed
+                breed = :breed,
+                image_url = :image_url
             WHERE user_id = :user_id
         """),
         {
@@ -113,6 +119,7 @@ def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
             "age": payload.age,
             "gender": payload.gender,
             "breed": payload.breed,
+            "image_url": payload.image_url,
         },
     )
 
@@ -120,9 +127,9 @@ def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
         db.execute(
             text("""
                 INSERT INTO dogs
-                (user_id, name, age, gender, breed)
+                (user_id, name, age, gender, breed, image_url)
                 VALUES
-                (:user_id, :name, :age, :gender, :breed)
+                (:user_id, :name, :age, :gender, :breed, :image_url)
             """),
             {
                 "user_id": payload.user_id,
@@ -130,6 +137,7 @@ def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
                 "age": payload.age,
                 "gender": payload.gender,
                 "breed": payload.breed,
+                "image_url": payload.image_url,
             },
         )
 
@@ -142,7 +150,7 @@ def upsert_dog(payload: DogRequest, db: Session = Depends(get_db)):
 def get_my_profile(user_id: str, db: Session = Depends(get_db)):
     user_profile = db.execute(
         text("""
-            SELECT nickname, age, gender, emergency_contact
+            SELECT nickname, age, gender, emergency_contact, profile_image_url AS image_url
             FROM user_profiles
             WHERE user_id = :user_id
             LIMIT 1
@@ -152,7 +160,7 @@ def get_my_profile(user_id: str, db: Session = Depends(get_db)):
 
     dog = db.execute(
         text("""
-            SELECT name, age, gender, breed
+            SELECT name, age, gender, breed, image_url
             FROM dogs
             WHERE user_id = :user_id
             LIMIT 1
@@ -164,4 +172,3 @@ def get_my_profile(user_id: str, db: Session = Depends(get_db)):
         "user_profile": dict(user_profile) if user_profile else None,
         "dog": dict(dog) if dog else None,
     }
-

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,8 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "../config/config";
 import { getCurrentUser } from "../auth/authStorage";
+import { resolveProfileImageUrl } from "../lib/uploadProfileImage";
 
 const TAB_USER = "user";
 const TAB_DOG = "dog";
@@ -41,6 +44,8 @@ export default function ProfileEditScreen({ navigation, route }) {
   const [dogBreed, setDogBreed] = useState("");
   const [saving, setSaving] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
+  const [userPhotoUri, setUserPhotoUri] = useState(null);
+  const [dogPhotoUri, setDogPhotoUri] = useState(null);
   const hadDogFromServer = useRef(false);
 
   const isUserTab = useMemo(() => activeTab === TAB_USER, [activeTab]);
@@ -63,6 +68,9 @@ export default function ProfileEditScreen({ navigation, route }) {
           if (userProfile.gender === "female") setUserGender("여자");
           else if (userProfile.gender === "male") setUserGender("남자");
           setEmergencyContact(userProfile.emergency_contact ?? "");
+          if (userProfile.image_url) {
+            setUserPhotoUri(userProfile.image_url);
+          }
         }
 
         const dogProfile = data?.dog;
@@ -73,6 +81,9 @@ export default function ProfileEditScreen({ navigation, route }) {
           if (dogProfile.gender === "female") setDogGender("여자");
           else if (dogProfile.gender === "male") setDogGender("남자");
           setDogBreed(dogProfile.breed ?? "");
+          if (dogProfile.image_url) {
+            setDogPhotoUri(dogProfile.image_url);
+          }
         }
       } catch (error) {
         console.log(error);
@@ -83,6 +94,25 @@ export default function ProfileEditScreen({ navigation, route }) {
 
     loadProfile();
   }, []);
+
+  const pickPhoto = async (setPhotoUri) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("권한 필요", "사진을 선택하려면 앨범 접근 권한을 허용해 주세요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
 
   const handleSubmit = async () => {
     const user = await getCurrentUser();
@@ -113,6 +143,11 @@ export default function ProfileEditScreen({ navigation, route }) {
 
     setSaving(true);
     try {
+      const userImageUrl = await resolveProfileImageUrl(user.id, userPhotoUri, "user");
+      const dogImageUrl = shouldSaveDog
+        ? await resolveProfileImageUrl(user.id, dogPhotoUri, "dog")
+        : null;
+
       const userRes = await fetch(`${API_BASE_URL}/profiles/user`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -122,6 +157,7 @@ export default function ProfileEditScreen({ navigation, route }) {
           age: ageNum,
           gender: userGenderApi,
           emergency_contact: emergencyContact.trim(),
+          image_url: userImageUrl,
         }),
       });
       const userErr = await userRes.json().catch(() => ({}));
@@ -146,6 +182,7 @@ export default function ProfileEditScreen({ navigation, route }) {
             age: dogAgeNum,
             gender: dogGenderApi,
             breed: dogBreed.trim(),
+            image_url: dogImageUrl,
           }),
         });
         const dogErr = await dogRes.json().catch(() => ({}));
@@ -160,7 +197,12 @@ export default function ProfileEditScreen({ navigation, route }) {
       navigation.navigate("ProfileMain");
     } catch (error) {
       console.log(error);
-      Alert.alert("오류", "네트워크 오류가 발생했습니다.");
+      const message =
+        error?.message?.includes("row-level security") ||
+        error?.message?.includes("new row violates")
+          ? "사진 업로드 권한이 없습니다. Supabase Storage policy를 확인해 주세요."
+          : "저장 중 오류가 발생했습니다.";
+      Alert.alert("오류", message);
     } finally {
       setSaving(false);
     }
@@ -190,12 +232,22 @@ export default function ProfileEditScreen({ navigation, route }) {
         {isUserTab ? (
           <>
             <View style={styles.userAvatar}>
-              <View style={styles.avatarHead} />
-              <View style={styles.avatarBody} />
+              {userPhotoUri ? (
+                <Image source={{ uri: userPhotoUri }} style={styles.avatarImage} />
+              ) : (
+                <>
+                  <View style={styles.avatarHead} />
+                  <View style={styles.avatarBody} />
+                </>
+              )}
             </View>
-            <View style={styles.photoButton}>
+            <TouchableOpacity
+              style={styles.photoButton}
+              activeOpacity={0.8}
+              onPress={() => pickPhoto(setUserPhotoUri)}
+            >
               <Text style={styles.photoButtonText}>사진 선택하기</Text>
-            </View>
+            </TouchableOpacity>
 
             <Text style={styles.sectionTitle}>상세 정보</Text>
             <View style={styles.infoCard}>
@@ -254,13 +306,21 @@ export default function ProfileEditScreen({ navigation, route }) {
         ) : (
           <>
             <View style={styles.dogAvatarOuter}>
-              <View style={styles.dogAvatarInner}>
-                <Text style={styles.dogFace}>🐶</Text>
-              </View>
+              {dogPhotoUri ? (
+                <Image source={{ uri: dogPhotoUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.dogAvatarInner}>
+                  <Text style={styles.dogFace}>🐶</Text>
+                </View>
+              )}
             </View>
-            <View style={styles.photoButton}>
+            <TouchableOpacity
+              style={styles.photoButton}
+              activeOpacity={0.8}
+              onPress={() => pickPhoto(setDogPhotoUri)}
+            >
               <Text style={styles.photoButtonText}>사진 선택하기</Text>
-            </View>
+            </TouchableOpacity>
 
             <Text style={styles.sectionTitle}>상세 정보</Text>
             <View style={styles.infoCard}>
@@ -386,6 +446,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 180,
     justifyContent: "center",
+    overflow: "hidden",
+    width: 180,
+  },
+  avatarImage: {
+    height: 180,
     width: 180,
   },
   avatarHead: {
@@ -408,6 +473,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 180,
     justifyContent: "center",
+    overflow: "hidden",
     width: 180,
   },
   dogAvatarInner: {
