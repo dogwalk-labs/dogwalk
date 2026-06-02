@@ -150,13 +150,13 @@ export default function ProfileScreen() {
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>주간</Text>
             <Text style={styles.recordValue}>
-              {walkStats?.weekly?.distanceKm ?? 0}km, {walkStats?.weekly?.duration ?? "0분"}
+              {(walkStats?.weekly?.distanceKm ?? 0).toFixed(2)}km, {walkStats?.weekly?.duration ?? "0분"}
             </Text>
           </View>
           <View style={styles.recordRow}>
             <Text style={styles.recordLabel}>월간</Text>
             <Text style={styles.recordValue}>
-              {walkStats?.monthly?.distanceKm ?? 0}km, {walkStats?.monthly?.duration ?? "0분"}
+              {(walkStats?.monthly?.distanceKm ?? 0).toFixed(2)}km, {walkStats?.monthly?.duration ?? "0분"}
             </Text>
           </View>
         </View>

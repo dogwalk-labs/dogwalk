@@ -111,7 +111,7 @@ export default function RankingScreen() {
               <View style={styles.rankBody}>
                 <Text style={styles.rankNameLine} numberOfLines={1}>
                   <Text style={styles.rankName}>{row.dogName}</Text>
-                  <Text style={styles.rankDistance}> ({row.distanceKm}km)</Text>
+                  <Text style={styles.rankDistance}> ({row.distanceKm.toFixed(2)}km)</Text>
                 </Text>
                 <Text style={styles.rankMeta} numberOfLines={1}>
                   {row.nickname}
@@ -146,7 +146,7 @@ export default function RankingScreen() {
             <Text style={styles.rankNameLine} numberOfLines={1}>
               <Text style={styles.rankName}>{myDogName}</Text>
               <Text style={styles.rankDistance}>
-                {" "}({myStats?.distanceKm ?? 0}km)
+                {" "}({myStats?.distanceKm?.toFixed(2) ?? "0.00"}km)
               </Text>
             </Text>
           </View>

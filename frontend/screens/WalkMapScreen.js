@@ -1509,6 +1509,8 @@ export default function WalkMapScreen({ navigation, route }) {
       <WalkControlBar
         coords={coords}
         onEndWalk={({ elapsedSeconds, distanceKm }) => {
+          console.log("### 산책종료 distanceKm:", distanceKm);  // 추가
+          console.log("### 산책종료 elapsedSeconds:", elapsedSeconds);  // 추가
           setLastWalkStats({ elapsedSeconds, distanceKm });
           setShowEndConfirm(true);
         }}
@@ -1546,8 +1548,8 @@ export default function WalkMapScreen({ navigation, route }) {
           }
           walkDistance={
             lastWalkStats
-              ? `${lastWalkStats.distanceKm.toFixed(1)}km`
-              : "0.0km"
+              ? `${lastWalkStats.distanceKm.toFixed(2)}km`
+              : "0.00km"
           }
           selectedRoute={selectedRoute}
           walkStats={lastWalkStats}
