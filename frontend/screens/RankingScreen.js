@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +15,18 @@ import { API_BASE_URL } from "../config/config";
 import { getCurrentUser, getAccessToken } from "../auth/authStorage";
 
 const MEDAL_EMOJI = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+function DogRankAvatar({ imageUrl }) {
+  return (
+    <View style={styles.avatarCircle}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.avatarImage} />
+      ) : (
+        <Text style={styles.avatarEmoji}>🐶</Text>
+      )}
+    </View>
+  );
+}
 
 export default function RankingScreen() {
   const navigation = useNavigation();
@@ -99,9 +112,7 @@ export default function RankingScreen() {
           leaderboard.map((row) => (
             <View key={row.id} style={styles.rankCard}>
               <View style={styles.avatarWrap}>
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarEmoji}>🐶</Text>
-                </View>
+                <DogRankAvatar imageUrl={row.dogImageUrl} />
                 {row.rank <= 3 && (
                   <Text style={styles.medalBadge}>
                     {MEDAL_EMOJI[row.rank]}
@@ -138,9 +149,7 @@ export default function RankingScreen() {
         <Text style={styles.sectionTitle}>내 순위</Text>
         <View style={styles.rankCard}>
           <View style={styles.avatarWrap}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarEmoji}>🐶</Text>
-            </View>
+            <DogRankAvatar imageUrl={myDogProfile?.image_url} />
           </View>
           <View style={styles.rankBody}>
             <Text style={styles.rankNameLine} numberOfLines={1}>
@@ -245,6 +254,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 56,
     justifyContent: "center",
+    overflow: "hidden",
+    width: 56,
+  },
+  avatarImage: {
+    height: 56,
     width: 56,
   },
   avatarEmoji: { fontSize: 28 },

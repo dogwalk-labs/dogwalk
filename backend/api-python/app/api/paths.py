@@ -193,6 +193,7 @@ def get_monthly_ranking(
                 u.id,
                 up.nickname,
                 d.name AS dog_name,
+                d.image_url AS dog_image_url,
                 SUM(p.actual_distance_m) AS total_distance_m,
                 RANK() OVER (ORDER BY SUM(p.actual_distance_m) DESC) AS rank
             FROM paths p
@@ -201,7 +202,7 @@ def get_monthly_ranking(
             LEFT JOIN dogs d ON d.user_id = u.id
             WHERE
                 DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
-            GROUP BY u.id, up.nickname, d.name
+            GROUP BY u.id, up.nickname, d.name, d.image_url
             ORDER BY total_distance_m DESC
             LIMIT 10
         """)
@@ -230,6 +231,7 @@ def get_monthly_ranking(
                 "id": str(r["id"]),
                 "nickname": r["nickname"] or "이름 없음",
                 "dogName": r["dog_name"] or "반려견",
+                "dogImageUrl": r["dog_image_url"],
                  "distanceKm": round((r["total_distance_m"] or 0) / 1000, 1),
                 "rank": r["rank"],
             }
