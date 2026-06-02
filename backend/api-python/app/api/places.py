@@ -77,7 +77,8 @@ def get_reviews(
                 pr.content,
                 pr.created_at,
                 pr.user_id,
-                up.nickname AS user_name
+                up.nickname AS user_name,
+                up.profile_image_url AS user_image_url
             FROM place_reviews pr
             LEFT JOIN user_profiles up ON up.user_id = pr.user_id
             WHERE pr.poi_id = :poi_id
@@ -92,6 +93,7 @@ def get_reviews(
                 "id": str(r["id"]),
                 "userId": str(r["user_id"]),
                 "userName": r["user_name"] or "사용자",
+                "userImageUrl": r["user_image_url"],
                 "rating": r["rating"],
                 "content": r["content"],
                 "date": r["created_at"].strftime("%Y.%m.%d") if r["created_at"] else "",

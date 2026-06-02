@@ -6,7 +6,8 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  ActivityIndicator, // 추가
+  ActivityIndicator,
+  Image,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native"; // 추가
 import { API_BASE_URL } from "../config/config"; // 추가 (reviewStore 제거)
@@ -22,6 +23,18 @@ function Stars({ count = 0 }) {
       {"★".repeat(rating)}
       {"☆".repeat(5 - rating)}
     </Text>
+  );
+}
+
+function ReviewUserAvatar({ imageUrl }) {
+  return (
+    <View style={styles.profileCircle}>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+      ) : (
+        <Text style={styles.profileIcon}>👤</Text>
+      )}
+    </View>
   );
 }
 
@@ -107,10 +120,10 @@ export default function PlaceReviewScreen({ navigation, route }) {
             <View key={review.id} style={styles.reviewCard}>
               <View style={styles.reviewTop}>
                 <Pressable
-                  style={({ pressed }) => [styles.profileCircle, pressed && styles.buttonPressed]}
+                  style={({ pressed }) => [pressed && styles.buttonPressed]}
                   onPress={() => goToUserProfile(review)}
                 >
-                  <Text style={styles.profileIcon}>👤</Text>
+                  <ReviewUserAvatar imageUrl={review.userImageUrl} />
                 </Pressable>
                 <View style={styles.reviewUserInfo}>
                   <Text style={styles.reviewName}>{review.userName}</Text>
@@ -184,6 +197,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F4E6D2",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  profileImage: {
+    width: 45,
+    height: 45,
+    borderRadius: 23,
   },
   profileIcon: { fontSize: 23 },
   reviewUserInfo: { marginLeft: 10, flex: 1 },
