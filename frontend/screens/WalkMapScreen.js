@@ -316,7 +316,7 @@ const makeHtml = () => `
 
     var startEndOverlay = null;
     var fullPath = [];
-    var furthestPassedIndex = 0;
+    var progressMeters = 0;
     var didInitialCenter = false;
     var walkStartMapLevel = null;
     var progressStarted = false;
@@ -347,6 +347,7 @@ const makeHtml = () => `
 
     var START_THRESHOLD = 35;
     var SNAP_THRESHOLD = 25;
+    var SNAP_LOOKAHEAD_METERS = 100;
     var ACTIVE_LOOKAHEAD_METERS = 950;
 
     var DOG_MARKER_URL = "https://cdn-icons-png.flaticon.com/512/3089/3089423.png";
@@ -466,6 +467,152 @@ const makeHtml = () => `
         Math.sin(dLng / 2) * Math.sin(dLng / 2);
       var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
+    }
+
+    function getLookaheadEndIndex(fromIdx, maxMeters) {
+      if (!fullPath || fullPath.length < 2) return fromIdx;
+      if (fromIdx >= fullPath.length - 1) return fromIdx;
+
+      var total = 0;
+      var endIdx = fromIdx;
+
+      for (var i = fromIdx + 1; i < fullPath.length; i++) {
+        total += distMeters(
+          fullPath[i - 1].getLat(), fullPath[i - 1].getLng(),
+          fullPath[i].getLat(), fullPath[i].getLng()
+        );
+        endIdx = i;
+        if (total >= maxMeters) break;
+      }
+
+      return endIdx;
+    }
+
+    function segmentLengthMeters(fromIdx) {
+      if (fromIdx < 0 || fromIdx >= fullPath.length - 1) return 0;
+      var a = fullPath[fromIdx];
+      var b = fullPath[fromIdx + 1];
+      return distMeters(a.getLat(), a.getLng(), b.getLat(), b.getLng());
+    }
+
+    function getMetersAlongPath(segmentIdx, ratio) {
+      var m = 0;
+      for (var i = 0; i < segmentIdx; i++) {
+        m += segmentLengthMeters(i);
+      }
+      if (segmentIdx < fullPath.length - 1) {
+        m += segmentLengthMeters(segmentIdx) * Math.max(0, Math.min(1, ratio));
+      }
+      return m;
+    }
+
+    function getSegmentIndexAtMeters(meters) {
+      var total = 0;
+      for (var i = 0; i < fullPath.length - 1; i++) {
+        var len = segmentLengthMeters(i);
+        if (len < 0.001) continue;
+        if (total + len >= meters) return i;
+        total += len;
+      }
+      return Math.max(0, fullPath.length - 2);
+    }
+
+    function projectPointToSegment(lat, lng, from, to) {
+      var aLat = from.getLat();
+      var aLng = from.getLng();
+      var bLat = to.getLat();
+      var bLng = to.getLng();
+
+      var cosLat = Math.cos(aLat * Math.PI / 180);
+      var meterLng = 111320 * cosLat;
+      var meterLat = 110540;
+
+      var bx = (bLng - aLng) * meterLng;
+      var by = (bLat - aLat) * meterLat;
+      var px = (lng - aLng) * meterLng;
+      var py = (lat - aLat) * meterLat;
+
+      var len2 = bx * bx + by * by;
+
+      if (len2 < 0.01) {
+        return {
+          distance: distMeters(lat, lng, aLat, aLng),
+          ratio: 0,
+        };
+      }
+
+      var t = (px * bx + py * by) / len2;
+      t = Math.max(0, Math.min(1, t));
+
+      var projLat = aLat + (bLat - aLat) * t;
+      var projLng = aLng + (bLng - aLng) * t;
+
+      return {
+        distance: distMeters(lat, lng, projLat, projLng),
+        ratio: t,
+      };
+    }
+
+    function findBestSegmentMatch(userLat, userLng, fromSegmentIdx, toSegmentIdx) {
+      var best = {
+        distance: Infinity,
+        segmentIdx: fromSegmentIdx,
+        ratio: 0,
+        meters: progressMeters,
+      };
+
+      var start = Math.max(0, fromSegmentIdx);
+      var end = Math.min(toSegmentIdx, fullPath.length - 2);
+      if (start > end) return best;
+
+      for (var i = start; i <= end; i++) {
+        var proj = projectPointToSegment(
+          userLat,
+          userLng,
+          fullPath[i],
+          fullPath[i + 1]
+        );
+        var meters = getMetersAlongPath(i, proj.ratio);
+
+        if (proj.distance < best.distance) {
+          best = {
+            distance: proj.distance,
+            segmentIdx: i,
+            ratio: proj.ratio,
+            meters: meters,
+          };
+        }
+      }
+
+      return best;
+    }
+
+    function getPathFromMeters(path, skipMeters) {
+      if (!path || path.length < 2) return path || [];
+      if (skipMeters <= 0) return path.slice();
+
+      var total = 0;
+
+      for (var i = 1; i < path.length; i++) {
+        var prev = path[i - 1];
+        var curr = path[i];
+        var d = distMeters(prev.getLat(), prev.getLng(), curr.getLat(), curr.getLng());
+        if (d < 1) continue;
+
+        if (total + d < skipMeters) {
+          total += d;
+          continue;
+        }
+
+        var remain = skipMeters - total;
+        var ratio = Math.max(0, Math.min(1, remain / d));
+        var startPoint = interpolateLatLng(prev, curr, ratio);
+        var result = [startPoint];
+        for (var j = i; j < path.length; j++) result.push(path[j]);
+        return result;
+      }
+
+      return [path[path.length - 1]];
     }
 
     function getBearingAngle(from, to) {
@@ -597,27 +744,6 @@ const makeHtml = () => `
     function drawRouteWithProgress(passedPath, remainingPath) {
       clearRouteLines();
 
-      if (passedPath && passedPath.length >= 2) {
-        passedOutline = new kakao.maps.Polyline({
-          path: passedPath,
-          strokeWeight: 12,
-          strokeColor: "#E8E8E8",
-          strokeOpacity: 0.88,
-          strokeStyle: "solid"
-        });
-
-        passedMain = new kakao.maps.Polyline({
-          path: passedPath,
-          strokeWeight: 8,
-          strokeColor: PASSED_COLOR,
-          strokeOpacity: 0.82,
-          strokeStyle: "solid"
-        });
-
-        passedOutline.setMap(map);
-        passedMain.setMap(map);
-      }
-
       if (remainingPath && remainingPath.length >= 2) {
         remainingOutline = new kakao.maps.Polyline({
           path: remainingPath,
@@ -674,11 +800,10 @@ const makeHtml = () => `
         return;
       }
 
-      var passed = fullPath.slice(0, furthestPassedIndex + 1);
-      var remaining = fullPath.slice(furthestPassedIndex);
+      var remaining = getPathFromMeters(fullPath, progressMeters);
 
       drawRouteWithProgress(
-        passed.length >= 2 ? passed : null,
+        null,
         remaining.length >= 2 ? remaining : null
       );
     }
@@ -708,7 +833,7 @@ const makeHtml = () => `
 
         clearAllRoute();
         fullPath = [];
-        furthestPassedIndex = 0;
+        progressMeters = 0;
         progressStarted = false;
 
         if (!route || !route.geometry || !route.geometry.coordinates || route.geometry.coordinates.length < 2) return;
@@ -743,28 +868,20 @@ const makeHtml = () => `
         if (!progressStarted) {
           if (distToStart <= START_THRESHOLD) {
             progressStarted = true;
-            furthestPassedIndex = 0;
+            progressMeters = 0;
           } else {
             drawRouteWithProgress(null, fullPath);
             return;
           }
         }
 
-        var minDist = Infinity;
-        var closestIdx = furthestPassedIndex;
+        var startSegmentIdx = getSegmentIndexAtMeters(progressMeters);
+        var searchEndIdx = getLookaheadEndIndex(startSegmentIdx, SNAP_LOOKAHEAD_METERS);
+        var endSegmentIdx = Math.max(startSegmentIdx, searchEndIdx - 1);
+        var match = findBestSegmentMatch(userLat, userLng, startSegmentIdx, endSegmentIdx);
 
-        for (var i = furthestPassedIndex; i < fullPath.length; i++) {
-          var p = fullPath[i];
-          var d = distMeters(userLat, userLng, p.getLat(), p.getLng());
-
-          if (d < minDist) {
-            minDist = d;
-            closestIdx = i;
-          }
-        }
-
-        if (minDist <= SNAP_THRESHOLD && closestIdx > furthestPassedIndex) {
-          furthestPassedIndex = closestIdx;
+        if (match.distance <= SNAP_THRESHOLD && match.meters > progressMeters + 0.5) {
+          progressMeters = match.meters;
         }
 
         redrawCurrentRoute();
