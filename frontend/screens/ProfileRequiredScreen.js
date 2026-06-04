@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 22,
     textAlign: "center",
+    transform: [{ translateY: -50 }],
   },
   button: {
     width: "100%",

@@ -8,6 +8,8 @@ import { getAccessToken } from "../auth/authStorage";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
+const POI_RADIUS_KM = 2.5;
+
 const CATEGORY_CONFIG = [
   {
     key: "CAFE",
@@ -31,6 +33,20 @@ const CATEGORY_CONFIG = [
     markerColor: "#E06A84",
   },
 ];
+
+function getDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const makeHtml = () => `
 <!doctype html>
@@ -83,7 +99,8 @@ const makeHtml = () => `
     }
 
     .poi-card-wrap {
-      transform: translate(-50%, calc(-100% + 20px));
+      width: 210px;
+      transform: translateY(-54px);
     }
 
     .poi-card {
@@ -95,6 +112,7 @@ const makeHtml = () => `
       box-shadow: 0 5px 14px rgba(0,0,0,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       box-sizing: border-box;
+      position: relative;
     }
 
     .poi-card::after {
@@ -178,12 +196,22 @@ const makeHtml = () => `
     var poiCardOverlays = [];
     var selectedPoiId = null;
     var hasInitialCentered = false;
+    var ignoreNextMapClick = false;
 
     var CATEGORY_STYLE = {
       CAFE: { label: "☕ 애견동반 카페", color: "#aa71a8" },
       HOSPITAL: { label: "🏥 동물 병원", color: "#37A66A" },
       RESTAURANT: { label: "🍔 애견동반 식당", color: "#E06A84" }
     };
+
+    function postOverlayMessage(message) {
+      ignoreNextMapClick = true;
+      window.ReactNativeWebView?.postMessage(message);
+
+      setTimeout(function() {
+        ignoreNextMapClick = false;
+      }, 250);
+    }
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -232,6 +260,11 @@ const makeHtml = () => `
 
       map = new kakao.maps.Map(container, options);
 
+      kakao.maps.event.addListener(map, "click", function() {
+        if (ignoreNextMapClick) return;
+        window.ReactNativeWebView?.postMessage("MAP_CLICK");
+      });
+
       kakao.maps.event.addListener(map, "dragstart", function() {
         window.ReactNativeWebView?.postMessage("USER_MOVED_MAP");
       });
@@ -274,7 +307,7 @@ const makeHtml = () => `
       var color = escapeHtml(style.color);
 
       return '' +
-        '<div class="poi-marker-wrap" onclick="window.ReactNativeWebView.postMessage(\\'MARKER_CLICK:' + escapeHtml(p.id) + '\\')">' +
+        '<div class="poi-marker-wrap" onclick="event.stopPropagation(); postOverlayMessage(\\'MARKER_CLICK:' + escapeHtml(p.id) + '\\')">' +
           '<div class="poi-marker-pin">' +
             '<svg viewBox="0 0 32 46" xmlns="http://www.w3.org/2000/svg">' +
               '<path d="M16 45C16 45 30 28.5 30 16C30 7.2 23.7 1 16 1C8.3 1 2 7.2 2 16C2 28.5 16 45 16 45Z" fill="' + color + '" stroke="#ffffff" stroke-width="2.5"/>' +
@@ -293,11 +326,11 @@ const makeHtml = () => `
       var heartColor = p.favorite ? "#E94B5A" : "#9A9A9A";
 
       return '' +
-        '<div class="poi-card-wrap">' +
+        '<div class="poi-card-wrap" onclick="event.stopPropagation(); ignoreNextMapClick = true; setTimeout(function(){ ignoreNextMapClick = false; }, 250);">' +
           '<div class="poi-card">' +
             '<div class="poi-title-row">' +
               '<div class="poi-title">' + title + '</div>' +
-              '<button class="heart-btn" style="color:' + heartColor + ';" onclick="window.ReactNativeWebView.postMessage(\\'FAVORITE_TOGGLE:' + escapeHtml(p.id) + '\\')">' +
+              '<button class="heart-btn" style="color:' + heartColor + ';" onclick="event.stopPropagation(); postOverlayMessage(\\'FAVORITE_TOGGLE:' + escapeHtml(p.id) + '\\')">' +
                 heart +
               '</button>' +
             '</div>' +
@@ -307,7 +340,7 @@ const makeHtml = () => `
               '<span style="font-weight:700;">' + rating + '</span> ' +
               '<span style="color:#888;">(' + reviewCount + ')</span>' +
             '</div>' +
-            '<button class="review-btn" onclick="window.ReactNativeWebView.postMessage(\\'REVIEW_PRESS:' + escapeHtml(p.id) + '\\')">' +
+            '<button class="review-btn" onclick="event.stopPropagation(); postOverlayMessage(\\'REVIEW_PRESS:' + escapeHtml(p.id) + '\\')">' +
               '리뷰 보기' +
             '</button>' +
           '</div>' +
@@ -347,7 +380,7 @@ const makeHtml = () => `
             position: pos,
             content: makePoiCard(p),
             xAnchor: 0.5,
-            yAnchor: 0.8,
+            yAnchor: 1,
             zIndex: 10
           });
 
@@ -476,6 +509,7 @@ function normalizePoi(item) {
 
 export default function MapScreen({ navigation }) {
   const webviewRef = useRef(null);
+  const lastMarkerClickTimeRef = useRef(0);
 
   const [coords, setCoords] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -558,74 +592,99 @@ export default function MapScreen({ navigation }) {
 
     loadPois();
   }, []);
+
   useEffect(() => {
     if (poisRaw.length === 0) return;
 
     const loadStats = async () => {
       const stats = {};
+
       await Promise.all(
-        flattenPois(poisRaw).map(normalizePoi).filter(
-          (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category
-        ).map(async (p) => {
-          try {
-            const res = await fetch(`${API_BASE_URL}/places/${p.id}/stats`);
-            const data = await res.json();
-            stats[p.id] = { rating: data.avgRating ?? 0, reviewCount: data.reviewCount ?? 0 };
-          } catch {
-            stats[p.id] = { rating: 0, reviewCount: 0 };
-          }
-        })
+        flattenPois(poisRaw)
+          .map(normalizePoi)
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category)
+          .map(async (p) => {
+            try {
+              const res = await fetch(`${API_BASE_URL}/places/${p.id}/stats`);
+              const data = await res.json();
+              stats[p.id] = {
+                rating: data.avgRating ?? 0,
+                reviewCount: data.reviewCount ?? 0,
+              };
+            } catch {
+              stats[p.id] = { rating: 0, reviewCount: 0 };
+            }
+          })
       );
+
       setReviewStats(stats);
     };
 
     loadStats();
   }, [poisRaw, reviewRefreshKey]);
 
-  // 즐겨찾기 목록 로드
   useEffect(() => {
     const loadFavorites = async () => {
       try {
-          const token = await getAccessToken();
-          console.log("### 즐겨찾기 로드 시작, token:", token ? "있음" : "없음");
-      if (!token) return;
+        const token = await getAccessToken();
+        console.log("### 즐겨찾기 로드 시작, token:", token ? "있음" : "없음");
+        if (!token) return;
 
-      const res = await fetch(`${API_BASE_URL}/places/my-favorites`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("### 즐겨찾기 응답 상태:", res.status);
-      const data = await res.json();
-      console.log("### 즐겨찾기 데이터:", data);
-      const favMap = {};
-      (data.favorites ?? []).forEach((poiId) => {
-        favMap[poiId] = true;
-      });
-      setFavoriteOverrides(favMap);
-    } catch (e) {
-      console.error("즐겨찾기 로드 실패:", e);
-    }
-  };
-  loadFavorites();
-}, []);
+        const res = await fetch(`${API_BASE_URL}/places/my-favorites`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("### 즐겨찾기 응답 상태:", res.status);
+
+        const data = await res.json();
+        console.log("### 즐겨찾기 데이터:", data);
+
+        const favMap = {};
+        (data.favorites ?? []).forEach((poiId) => {
+          favMap[poiId] = true;
+        });
+
+        setFavoriteOverrides(favMap);
+      } catch (e) {
+        console.error("즐겨찾기 로드 실패:", e);
+      }
+    };
+
+    loadFavorites();
+  }, []);
 
   const allPois = useMemo(() => {
     return flattenPois(poisRaw)
       .map(normalizePoi)
       .map((p) => ({
-          ...p,
-          favorite:
-            favoriteOverrides[p.id] !== undefined
-              ? favoriteOverrides[p.id]
-              : p.favorite,
-          // reviewStore 대신 reviewStats에서 가져오기
-          rating: reviewStats[p.id]?.rating ?? p.rating,
-          reviewCount: reviewStats[p.id]?.reviewCount ?? p.reviewCount,
-    })) 
+        ...p,
+        favorite:
+          favoriteOverrides[p.id] !== undefined
+            ? favoriteOverrides[p.id]
+            : p.favorite,
+        rating: reviewStats[p.id]?.rating ?? p.rating,
+        reviewCount: reviewStats[p.id]?.reviewCount ?? p.reviewCount,
+      }))
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !!p.category);
   }, [poisRaw, favoriteOverrides, reviewStats]);
 
   const filteredPois = useMemo(() => {
     let list = allPois;
+
+    if (!coords) {
+      return [];
+    }
+
+    list = list.filter((p) => {
+      const distance = getDistanceKm(
+        coords.latitude,
+        coords.longitude,
+        p.lat,
+        p.lng
+      );
+
+      return distance <= POI_RADIUS_KM;
+    });
 
     if (selectedCategory !== null) {
       list = list.filter((p) => p.category === selectedCategory);
@@ -636,7 +695,7 @@ export default function MapScreen({ navigation }) {
     }
 
     return list;
-  }, [allPois, selectedCategory, showFavoritesOnly]);
+  }, [allPois, coords, selectedCategory, showFavoritesOnly]);
 
   useEffect(() => {
     if (!coords || !mapReady || !webviewRef.current) return;
@@ -659,7 +718,7 @@ export default function MapScreen({ navigation }) {
       window.renderPois(
         ${JSON.stringify(pois)},
         ${JSON.stringify(selectedPoiId)},
-        ${shouldShowPois && selectedPoiId === null ? "true" : "false"}
+        false
       );
       true;
     `;
@@ -692,36 +751,39 @@ export default function MapScreen({ navigation }) {
   }, []);
 
   const toggleFavoriteById = useCallback(
-  async (poiId) => {
-    const target = allPois.find((p) => p.id === poiId);
-    const currentFav =
-      favoriteOverrides[poiId] !== undefined
-        ? favoriteOverrides[poiId]
-        : target?.favorite;
-    const newFav = !currentFav;
+    async (poiId) => {
+      const target = allPois.find((p) => p.id === poiId);
+      const currentFav =
+        favoriteOverrides[poiId] !== undefined
+          ? favoriteOverrides[poiId]
+          : target?.favorite;
 
-    // 즉시 UI 업데이트
-    setFavoriteOverrides((prev) => ({ ...prev, [poiId]: newFav }));
-    setSelectedPoiId(poiId);
+      const newFav = !currentFav;
 
-    // DB 저장
-    try {
-      const token = await getAccessToken();
-      console.log("### 즐겨찾기 토글:", poiId, "추가:", newFav);
-      const res = await fetch(`${API_BASE_URL}/places/${poiId}/favorite`, {
-        method: newFav ? "POST" : "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("### 즐겨찾기 저장 응답:", res.status);
-      const data = await res.json();
-      console.log("### 즐겨찾기 저장 결과:", data);
-    } catch (e) {
-      console.error("즐겨찾기 저장 실패:", e);
-      setFavoriteOverrides((prev) => ({ ...prev, [poiId]: currentFav }));
-    }
-  },
-  [allPois, favoriteOverrides]
-);
+      setFavoriteOverrides((prev) => ({ ...prev, [poiId]: newFav }));
+      setSelectedPoiId(poiId);
+
+      try {
+        const token = await getAccessToken();
+        console.log("### 즐겨찾기 토글:", poiId, "추가:", newFav);
+
+        const res = await fetch(`${API_BASE_URL}/places/${poiId}/favorite`, {
+          method: newFav ? "POST" : "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("### 즐겨찾기 저장 응답:", res.status);
+
+        const data = await res.json();
+        console.log("### 즐겨찾기 저장 결과:", data);
+      } catch (e) {
+        console.error("즐겨찾기 저장 실패:", e);
+        setFavoriteOverrides((prev) => ({ ...prev, [poiId]: currentFav }));
+      }
+    },
+    [allPois, favoriteOverrides]
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
@@ -751,19 +813,35 @@ export default function MapScreen({ navigation }) {
 
             if (msg === "Map created OK") {
               setMapReady(true);
+              return;
             }
 
             if (msg === "USER_MOVED_MAP") {
               setIsMyLocationActive(false);
+              return;
             }
 
             if (msg.startsWith("MARKER_CLICK:")) {
+              lastMarkerClickTimeRef.current = Date.now();
               setSelectedPoiId(msg.replace("MARKER_CLICK:", ""));
+              return;
+            }
+
+            if (msg === "MAP_CLICK") {
+              const now = Date.now();
+
+              if (now - lastMarkerClickTimeRef.current < 500) {
+                return;
+              }
+
+              setSelectedPoiId(null);
+              return;
             }
 
             if (msg.startsWith("FAVORITE_TOGGLE:")) {
               const poiId = msg.replace("FAVORITE_TOGGLE:", "");
               toggleFavoriteById(poiId);
+              return;
             }
 
             if (msg.startsWith("REVIEW_PRESS:")) {

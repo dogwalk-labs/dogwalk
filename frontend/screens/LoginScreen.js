@@ -9,7 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const BG = "#FBF3DD";
 const TEXT = "#2B2B2B";
@@ -33,104 +36,111 @@ export default function LoginScreen({
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.containerInner}>
-          <View style={styles.header}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.backBtn,
-                pressed && styles.backBtnPressed,
-              ]}
-              onPress={onBack}
-            >
-              <Text style={styles.backText}>←</Text>
-            </Pressable>
-
-            <Text style={styles.headerTitle}>로그인</Text>
-
-            <View style={styles.headerRightSpacer} />
-          </View>
-
-          <View style={styles.content}>
-          <Image
-            source={require("../assets/loginPage_dog.png")}
-            style={styles.icon}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}> </Text>
-
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              style={styles.input}
-              placeholder="이메일을 입력해주세요"
-              placeholderTextColor="#BDBDBD"
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
-              keyboardType="email-address"
-              underlineColorAndroid="transparent"
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={pw}
-              onChangeText={setPw}
-              style={styles.input}
-              placeholder="비밀번호를 입력해주세요"
-              placeholderTextColor="#BDBDBD"
-              secureTextEntry
-            />
-          </View>
-
-          <Pressable
-            disabled={!canSubmit}
-            style={({ pressed }) => [
-              styles.loginButton,
-              !canSubmit && styles.loginButtonDisabled,
-              pressed && canSubmit && styles.buttonPressed,
-            ]}
-            onPress={() =>
-              onLoginPress?.({ email: email.trim(), password: pw })
-            }
-          >
-            <Text style={styles.loginButtonText}>
-              {submitting ? "처리 중…" : "로그인"}
-            </Text>
-          </Pressable> 
-
-          <View style={styles.hintWrap}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.forgotRow,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={onForgotPress}
-            >
-              <Text style={styles.forgotText}>비밀번호를 잊으셨나요?</Text>
-            </Pressable>
-
-            <View style={styles.dividerLine} />
-
-            <View style={styles.signupHintRow}>
-              <Text style={styles.signupHintText}>
-                아직 계정이 없으신가요?
-              </Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.containerInner}>
+            <View style={styles.header}>
               <Pressable
-                onPress={onSignupPress}
                 style={({ pressed }) => [
-                  pressed && styles.buttonPressed,
+                  styles.backBtn,
+                  pressed && styles.backBtnPressed,
                 ]}
+                onPress={onBack}
+                hitSlop={12}
               >
-                <Text style={styles.signupLinkText}>회원가입</Text>
+                <Ionicons name="chevron-back" size={28} color={TEXT} />
               </Pressable>
+
+              <Text style={styles.headerTitle}>로그인</Text>
+
+              <View style={styles.headerRightSpacer} />
+            </View>
+
+            <View style={styles.content}>
+              <Image
+                source={require("../assets/loginPage_dog.png")}
+                style={styles.icon}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.title}> </Text>
+
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  style={styles.input}
+                  placeholder="이메일을 입력해주세요"
+                  placeholderTextColor="#BDBDBD"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  keyboardType="email-address"
+                  underlineColorAndroid="transparent"
+                  returnKeyType="next"
+                />
+              </View>
+
+              <View style={styles.inputWrap}>
+                <TextInput
+                  value={pw}
+                  onChangeText={setPw}
+                  style={styles.input}
+                  placeholder="비밀번호를 입력해주세요"
+                  placeholderTextColor="#BDBDBD"
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+              </View>
+
+              <Pressable
+                disabled={!canSubmit}
+                style={({ pressed }) => [
+                  styles.loginButton,
+                  !canSubmit && styles.loginButtonDisabled,
+                  pressed && canSubmit && styles.buttonPressed,
+                ]}
+                onPress={() =>
+                  onLoginPress?.({ email: email.trim(), password: pw })
+                }
+              >
+                <Text style={styles.loginButtonText}>
+                  {submitting ? "처리 중…" : "로그인"}
+                </Text>
+              </Pressable>
+
+              <View style={styles.hintWrap}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.forgotRow,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={onForgotPress}
+                >
+                  <Text style={styles.forgotText}>비밀번호를 잊으셨나요?</Text>
+                </Pressable>
+
+                <View style={styles.dividerLine} />
+
+                <View style={styles.signupHintRow}>
+                  <Text style={styles.signupHintText}>
+                    아직 계정이 없으신가요?
+                  </Text>
+                  <Pressable
+                    onPress={onSignupPress}
+                    style={({ pressed }) => [
+                      pressed && styles.buttonPressed,
+                    ]}
+                  >
+                    <Text style={styles.signupLinkText}>회원가입</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
           </View>
-          </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -140,13 +150,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
+
   safeArea: {
     flex: 1,
     backgroundColor: BG,
   },
+
   containerInner: {
     flex: 1,
   },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -155,6 +168,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 8,
   },
+
   backBtn: {
     width: 44,
     height: 44,
@@ -162,14 +176,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   backBtnPressed: {
     transform: [{ scale: 0.96 }],
+    opacity: 0.92,
   },
-  backText: {
-    fontSize: 26,
-    fontWeight: "900",
-    color: "#777",
-  },
+
   headerTitle: {
     flex: 1,
     textAlign: "center",
@@ -179,31 +191,37 @@ const styles = StyleSheet.create({
     marginRight: 44,
     marginLeft: 44,
   },
+
   headerRightSpacer: {
     width: 44,
     height: 44,
   },
+
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
   },
+
   icon: {
     width: 280,
     height: 270,
     marginBottom: 8,
   },
+
   title: {
     fontSize: 28,
     fontWeight: "900",
     color: TEXT,
-    marginBottom: 10, 
+    marginBottom: 10,
   },
+
   inputWrap: {
     width: "100%",
     marginBottom: 12,
   },
+
   input: {
     height: 54,
     borderRadius: 27,
@@ -215,6 +233,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.06)",
   },
+
   loginButton: {
     width: "100%",
     height: 58,
@@ -229,45 +248,45 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
+
   loginButtonDisabled: {
     opacity: 0.55,
   },
+
   buttonPressed: {
     transform: [{ scale: 0.97 }],
     opacity: 0.95,
   },
+
   loginButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "900",
-  },
-  hint: {
-    marginTop: 14,
-    fontSize: 13,
-    color: "#AFA696",
-    fontWeight: "700",
-    textAlign: "center",
   },
 
   hintWrap: {
     marginTop: 16,
     alignItems: "center",
   },
+
   forgotRow: {
     paddingVertical: 2,
   },
+
   forgotText: {
     fontSize: 14,
     color: TEXT,
     fontWeight: "700",
     textAlign: "center",
   },
+
   dividerLine: {
     marginTop: 10,
     width: "100%",
     height: 1,
     backgroundColor: "rgba(0,0,0,0.08)",
   },
+
   signupHintRow: {
     marginTop: 12,
     flexDirection: "row",
@@ -275,15 +294,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
+
   signupHintText: {
     fontSize: 14,
     color: "#AFA696",
     fontWeight: "700",
   },
+
   signupLinkText: {
     fontSize: 14,
     color: BROWN,
     fontWeight: "900",
   },
 });
-

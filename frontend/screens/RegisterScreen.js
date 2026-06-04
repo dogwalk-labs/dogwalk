@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   SafeAreaView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -68,113 +70,120 @@ export default function RegisterScreen({ onBack, onSignupPress, submitting }) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.containerInner}>
-          <View style={styles.header}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.backBtn,
-                pressed && styles.backBtnPressed,
-              ]}
-              onPress={onBack}
-              hitSlop={12}
-            >
-              <Ionicons name="chevron-back" size={28} color={TEXT} />
-            </Pressable>
-
-            <Text style={styles.headerTitle}>회원 가입</Text>
-
-            <View style={styles.headerRightSpacer} />
-          </View>
-
-          <View style={styles.content}>
-            <View style={styles.hero}>
-              <Image
-                source={require("../assets/registerPage_image.png")}
-                style={styles.icon}
-                resizeMode="contain"
-              />
-            </View>
-
-            <Text style={styles.title}>멍멍워크와 함께{"\n"}산책을 시작해볼까요?</Text>
-
-            <Text style={styles.subtitle}>
-              반려동물과의 산책을{"\n"}더 편하게 만들어드릴게요
-            </Text>
-
-            <View style={styles.form}>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  style={styles.input}
-                  placeholder="이메일 주소"
-                  placeholderTextColor="#BDBDBD"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
-
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={pw}
-                  onChangeText={setPw}
-                  style={styles.input}
-                  placeholder="비밀번호 생성"
-                  placeholderTextColor="#BDBDBD"
-                  secureTextEntry
-                />
-              </View>
-
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={pwConfirm}
-                  onChangeText={setPwConfirm}
-                  style={styles.input}
-                  placeholder="비밀번호 확인"
-                  placeholderTextColor="#BDBDBD"
-                  secureTextEntry
-                />
-              </View>
-
-              <View style={styles.checkboxList}>
-                <CheckboxRow
-                  label="서비스 이용약관(필수)"
-                  checked={agreeTerms}
-                  onToggle={() => setAgreeTerms((v) => !v)}
-                />
-                <CheckboxRow
-                  label="개인정보 수집동의(필수)"
-                  checked={agreePrivacy}
-                  onToggle={() => setAgreePrivacy((v) => !v)}
-                />
-              </View>
-
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.containerInner}>
+            <View style={styles.header}>
               <Pressable
-                disabled={!canSubmit || submitting}
                 style={({ pressed }) => [
-                  styles.signupButton,
-                  (!canSubmit || submitting) && styles.signupButtonDisabled,
-                  pressed && canSubmit && !submitting && styles.buttonPressed,
+                  styles.backBtn,
+                  pressed && styles.backBtnPressed,
                 ]}
-
-                onPress={() =>
-                  onSignupPress?.({
-                    email,
-                    password: pw,
-                    password_confirm: pwConfirm,
-                    nickname: derivedNickname,
-                  })
-                }
+                onPress={onBack}
+                hitSlop={12}
               >
-                <Text style={styles.signupButtonText}>
-                  {submitting ? "처리 중…" : "회원 가입"}
-                </Text>
+                <Ionicons name="chevron-back" size={28} color={TEXT} />
               </Pressable>
+
+              <Text style={styles.headerTitle}>회원 가입</Text>
+
+              <View style={styles.headerRightSpacer} />
+            </View>
+
+            <View style={styles.content}>
+              <View style={styles.hero}>
+                <Image
+                  source={require("../assets/registerPage_image.png")}
+                  style={styles.icon}
+                  resizeMode="contain"
+                />
+              </View>
+
+              <Text style={styles.title}>
+                같이걷개와 함께{"\n"}산책을 시작해볼까요?
+              </Text>
+
+              <Text style={styles.subtitle}>
+                반려동물과의 산책을{"\n"}더 편하게 만들어드릴게요
+              </Text>
+
+              <View style={styles.form}>
+                <View style={styles.inputWrap}>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    style={styles.input}
+                    placeholder="이메일 주소"
+                    placeholderTextColor="#BDBDBD"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <TextInput
+                    value={pw}
+                    onChangeText={setPw}
+                    style={styles.input}
+                    placeholder="비밀번호 생성"
+                    placeholderTextColor="#BDBDBD"
+                    secureTextEntry
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <TextInput
+                    value={pwConfirm}
+                    onChangeText={setPwConfirm}
+                    style={styles.input}
+                    placeholder="비밀번호 확인"
+                    placeholderTextColor="#BDBDBD"
+                    secureTextEntry
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
+                  />
+                </View>
+
+                <View style={styles.checkboxList}>
+                  <CheckboxRow
+                    label="서비스 이용약관(필수)"
+                    checked={agreeTerms}
+                    onToggle={() => setAgreeTerms((v) => !v)}
+                  />
+                  <CheckboxRow
+                    label="개인정보 수집동의(필수)"
+                    checked={agreePrivacy}
+                    onToggle={() => setAgreePrivacy((v) => !v)}
+                  />
+                </View>
+
+                <Pressable
+                  disabled={!canSubmit || submitting}
+                  style={({ pressed }) => [
+                    styles.signupButton,
+                    (!canSubmit || submitting) && styles.signupButtonDisabled,
+                    pressed && canSubmit && !submitting && styles.buttonPressed,
+                  ]}
+                  onPress={() =>
+                    onSignupPress?.({
+                      email,
+                      password: pw,
+                      password_confirm: pwConfirm,
+                      nickname: derivedNickname,
+                    })
+                  }
+                >
+                  <Text style={styles.signupButtonText}>
+                    {submitting ? "처리 중…" : "회원 가입"}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -201,7 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 10,
     paddingTop: 4,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
 
   backBtn: {
@@ -235,49 +244,52 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingHorizontal: 22,
-    paddingTop: 4,
+    paddingTop: 0,
   },
 
   hero: {
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 0,
   },
 
   icon: {
     width: 300,
-    height: 200,
+    height: 190,
   },
 
   title: {
-    marginTop: 4,
+    marginTop: 2,
     textAlign: "center",
     fontSize: 26,
     fontWeight: "900",
     color: TEXT,
     lineHeight: 34,
+    transform: [{ translateY: -5 }],
   },
 
   subtitle: {
-    marginTop: 10,
+    marginTop: 8,
     textAlign: "center",
     fontSize: 16,
     fontWeight: "700",
     color: SUBTEXT,
     lineHeight: 22,
+    transform: [{ translateY: 0 }],
   },
 
   form: {
     width: "100%",
-    marginTop: 24,
+    marginTop: 14,
+    transform: [{ translateY: 20 }],
   },
 
   inputWrap: {
     width: "100%",
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
   input: {
-    height: 52,
+    height: 50,
     borderRadius: 999,
     backgroundColor: "#fff",
     paddingHorizontal: 18,
@@ -295,9 +307,9 @@ const styles = StyleSheet.create({
 
   checkboxList: {
     width: "100%",
-    marginTop: 6,
-    marginBottom: 22,
-    gap: 10,
+    marginTop: 4,
+    marginBottom: 16,
+    gap: 8,
   },
 
   checkboxRow: {
@@ -340,8 +352,8 @@ const styles = StyleSheet.create({
 
   signupButton: {
     width: "100%",
-    height: 68,
-    borderRadius: 18,
+    height: 58,
+    borderRadius: 16,
     backgroundColor: BROWN,
     alignItems: "center",
     justifyContent: "center",
@@ -363,7 +375,7 @@ const styles = StyleSheet.create({
 
   signupButtonText: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "900",
   },
 });

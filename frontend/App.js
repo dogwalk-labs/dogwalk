@@ -33,7 +33,6 @@ function WalkStack() {
       <Stack.Screen name="TimeSelect" component={TimeSelectScreen} />
       <Stack.Screen name="RouteSelect" component={RouteSelectScreen} />
       <Stack.Screen name="WalkMap" component={WalkMapScreen} />
-
       <Stack.Screen name="PlaceReview" component={PlaceReviewScreen} />
       <Stack.Screen name="PlaceReview2" component={PlaceReviewScreen2} />
     </Stack.Navigator>
@@ -52,6 +51,7 @@ function ProfileStack() {
 function MainTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Walk"
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <BottomTabBar {...props} />}
     >

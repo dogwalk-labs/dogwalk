@@ -34,7 +34,10 @@ export default function OnboardingSlide1({ onNextPress }) {
       <View style={styles.buttonArea}>
         <Pressable
           onPress={onNextPress}
-          style={({ pressed }) => [styles.nextButton, pressed && styles.nextButtonPressed]}
+          style={({ pressed }) => [
+            styles.nextButton,
+            pressed && styles.nextButtonPressed,
+          ]}
         >
           <Text style={styles.nextButtonText}>다음</Text>
         </Pressable>
@@ -51,25 +54,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     alignItems: "center",
     justifyContent: "center",
+    paddingBottom: 130,
   },
 
   heroBox: {
     width: "100%",
-    height: 340,
+    height: 300,
     alignItems: "center",
     justifyContent: "flex-end",
   },
 
   iconDog: {
-    width: 320,
-    height: 320,
-    transform: [{ translateY: 25 }],
+    width: 300,
+    height: 300,
+    transform: [{ translateY: 50 }],
   },
 
   titleBox: {
     width: "100%",
-    minHeight: 120,
-    marginTop: 12,
+    minHeight: 95,
+    marginTop: -2,
     alignItems: "center",
     justifyContent: "flex-start",
   },
@@ -80,13 +84,14 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: TEXT,
     lineHeight: 36,
+    marginTop: 15,
   },
 
   buttonArea: {
     position: "absolute",
     left: 22,
     right: 22,
-    bottom: 72,
+    bottom: 150,
   },
 
   nextButton: {

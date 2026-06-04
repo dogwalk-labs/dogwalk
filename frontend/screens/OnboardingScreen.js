@@ -370,12 +370,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
+
   scrollContent: {
     backgroundColor: BG,
   },
+
   dots: {
     position: "absolute",
-    bottom: 30,
+    bottom: 82,
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -383,11 +385,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+
   dot: {
     color: "#D0CABF",
     fontSize: 10,
     lineHeight: 10,
   },
+
   dotActive: {
     color: "#2B2B2B",
   },

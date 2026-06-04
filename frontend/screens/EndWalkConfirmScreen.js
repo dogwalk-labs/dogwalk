@@ -26,27 +26,29 @@ export default function EndWalkConfirmScreen({ onClose, onConfirm }) {
           <Ionicons name="chevron-back" size={28} color="#666" />
         </Pressable>
 
-        <View style={styles.graphic}>
-          <Image
-            source={require("../assets/endScreen_dog.png")}
-            style={styles.graphicImage}
-            resizeMode="contain"
-          />
+        <View style={styles.contentWrapper}>
+          <View style={styles.graphic}>
+            <Image
+              source={require("../assets/endScreen_dog.png")}
+              style={styles.graphicImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          <Text style={styles.title}>
+            오늘의 산책을{"\n"}여기서 종료할까요?
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.confirmButton,
+              pressed && styles.confirmButtonPressed,
+            ]}
+            onPress={onConfirm}
+          >
+            <Text style={styles.confirmButtonText}>종료하기</Text>
+          </Pressable>
         </View>
-
-        <Text style={styles.title}>
-          오늘의 산책을{"\n"}여기서 종료할까요?
-        </Text>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.confirmButton,
-            pressed && styles.confirmButtonPressed,
-          ]}
-          onPress={onConfirm}
-        >
-          <Text style={styles.confirmButtonText}>종료하기</Text>
-        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -73,8 +75,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
+  // 전체를 아래로 내리는 영역
+  contentWrapper: {
+    marginTop: 120,
+    alignItems: "center",
+    width: "100%",
+  },
+
   graphic: {
-    marginTop: 110,
     alignItems: "center",
   },
 

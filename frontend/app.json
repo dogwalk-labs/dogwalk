@@ -1,18 +1,20 @@
 {
   "expo": {
-    "name": "example_map",
-    "slug": "example_map",
+    "name": "같이걷개!",
+    "slug": "dogwalk",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/start.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FBF3DD"
     },
     "ios": {
+
+
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "프로필 사진을 선택하기 위해 사진 앨범 접근이 필요합니다."

@@ -1,5 +1,5 @@
 // IP 또는 호스트만 바꾸면 아래 base URL들이 함께 적용됩니다.
-export const SERVER_HOST = "10.51.114.76";
+export const SERVER_HOST = "172.20.10.3";
 const API_PORT = 8000;
 const POI_SERVICE_PORT = 8080;
 

@@ -212,7 +212,8 @@ const makeHtml = () => `
     }
 
     .poi-card-wrap {
-      transform: translate(-50%, calc(-100% + 20px));
+      width: 210px;
+      transform: translateY(-54px);
     }
 
     .poi-card {
@@ -224,6 +225,7 @@ const makeHtml = () => `
       box-shadow: 0 5px 14px rgba(0,0,0,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       box-sizing: border-box;
+      position: relative;
     }
 
     .poi-card::after {
@@ -325,12 +327,22 @@ const makeHtml = () => `
     var poiMarkerOverlays = [];
     var poiCardOverlays = [];
     var selectedPoiId = null;
+    var ignoreNextMapClick = false;
 
     var CATEGORY_STYLE = {
       CAFE: { label: "☕ 애견동반 카페", color: "#aa71a8" },
       HOSPITAL: { label: "🏥 동물 병원", color: "#37A66A" },
       RESTAURANT: { label: "🍔 애견동반 식당", color: "#E06A84" }
     };
+
+    function postOverlayMessage(message) {
+      ignoreNextMapClick = true;
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(message);
+
+      setTimeout(function() {
+        ignoreNextMapClick = false;
+      }, 180);
+    }
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -417,7 +429,7 @@ const makeHtml = () => `
       var color = escapeHtml(style.color);
 
       return '' +
-        '<div class="poi-marker-wrap" onclick="window.ReactNativeWebView.postMessage(\\'MARKER_CLICK:' + escapeHtml(p.id) + '\\')">' +
+        '<div class="poi-marker-wrap" onclick="event.stopPropagation(); postOverlayMessage(\\'MARKER_CLICK:' + escapeHtml(p.id) + '\\')">' +
           '<div class="poi-marker-pin">' +
             '<svg viewBox="0 0 32 46" xmlns="http://www.w3.org/2000/svg">' +
               '<path d="M16 45C16 45 30 28.5 30 16C30 7.2 23.7 1 16 1C8.3 1 2 7.2 2 16C2 28.5 16 45 16 45Z" fill="' + color + '" stroke="#ffffff" stroke-width="2.5"/>' +
@@ -436,11 +448,11 @@ const makeHtml = () => `
       var heartColor = p.favorite ? "#E94B5A" : "#9A9A9A";
 
       return '' +
-        '<div class="poi-card-wrap">' +
+        '<div class="poi-card-wrap" onclick="event.stopPropagation(); ignoreNextMapClick = true; setTimeout(function(){ ignoreNextMapClick = false; }, 180);">' +
           '<div class="poi-card">' +
             '<div class="poi-title-row">' +
               '<div class="poi-title">' + title + '</div>' +
-              '<button class="heart-btn" style="color:' + heartColor + ';" onclick="window.ReactNativeWebView.postMessage(\\'FAVORITE_TOGGLE:' + escapeHtml(p.id) + '\\')">' +
+              '<button class="heart-btn" style="color:' + heartColor + ';" onclick="event.stopPropagation(); postOverlayMessage(\\'FAVORITE_TOGGLE:' + escapeHtml(p.id) + '\\')">' +
                 heart +
               '</button>' +
             '</div>' +
@@ -450,7 +462,7 @@ const makeHtml = () => `
               '<span style="font-weight:700;">' + rating + '</span> ' +
               '<span style="color:#888;">(' + reviewCount + ')</span>' +
             '</div>' +
-            '<button class="review-btn" onclick="window.ReactNativeWebView.postMessage(\\'REVIEW_PRESS:' + escapeHtml(p.id) + '\\')">' +
+            '<button class="review-btn" onclick="event.stopPropagation(); postOverlayMessage(\\'REVIEW_PRESS:' + escapeHtml(p.id) + '\\')">' +
               '리뷰 보기' +
             '</button>' +
           '</div>' +
@@ -902,6 +914,11 @@ const makeHtml = () => `
 
       map = new kakao.maps.Map(container, options);
 
+      kakao.maps.event.addListener(map, "click", function() {
+        if (ignoreNextMapClick) return;
+        window.ReactNativeWebView && window.ReactNativeWebView.postMessage("MAP_CLICK");
+      });
+
       kakao.maps.event.addListener(map, "dragstart", function() {
         window.ReactNativeWebView && window.ReactNativeWebView.postMessage("USER_MOVED_MAP");
       });
@@ -982,7 +999,7 @@ const makeHtml = () => `
             position: pos,
             content: makePoiCard(p),
             xAnchor: 0.5,
-            yAnchor: 0.8,
+            yAnchor: 1,
             zIndex: 20
           });
 
@@ -1040,9 +1057,9 @@ function normalizePoiCategory(raw) {
 function normalizeFavorite(item) {
   return Boolean(
     item.favorite === true ||
-    item.isFavorite === true ||
-    item.bookmarked === true ||
-    item.liked === true
+      item.isFavorite === true ||
+      item.bookmarked === true ||
+      item.liked === true
   );
 }
 
@@ -1397,6 +1414,10 @@ export default function WalkMapScreen({ navigation, route }) {
               setIsMyLocationActive(false);
             }
 
+            if (msg === "MAP_CLICK") {
+              setSelectedPoiId(null);
+            }
+
             if (msg.startsWith("MARKER_CLICK:")) {
               setSelectedPoiId(msg.replace("MARKER_CLICK:", ""));
             }
@@ -1509,8 +1530,8 @@ export default function WalkMapScreen({ navigation, route }) {
       <WalkControlBar
         coords={coords}
         onEndWalk={({ elapsedSeconds, distanceKm }) => {
-          console.log("### 산책종료 distanceKm:", distanceKm);  // 추가
-          console.log("### 산책종료 elapsedSeconds:", elapsedSeconds);  // 추가
+          console.log("### 산책종료 distanceKm:", distanceKm);
+          console.log("### 산책종료 elapsedSeconds:", elapsedSeconds);
           setLastWalkStats({ elapsedSeconds, distanceKm });
           setShowEndConfirm(true);
         }}
@@ -1646,4 +1667,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
   },
-}); 
+});

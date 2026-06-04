@@ -1,4 +1,5 @@
-//WalkReviewSlide2.js
+// WalkReviewSlide2.js
+
 import React, { useState } from "react";
 import {
   View,
@@ -29,43 +30,46 @@ export default function WalkReviewSlide2({ onLike, onDislike }) {
 
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <View style={styles.graphicWrap}>
-        <Image
-          source={require("../assets/endScreen_star.png")}
-          style={styles.graphicImage}
-          resizeMode="contain"
-        />
-      </View>
+      <View style={styles.contentWrapper}>
+        <View style={styles.graphicWrap}>
+          <Image
+            source={require("../assets/endScreen_star.png")}
+            style={styles.graphicImage}
+            resizeMode="contain"
+          />
+        </View>
 
-      <Text style={styles.title}>산책 코스를 평가해주세요</Text>
+        <Text style={styles.title}>산책 코스를 평가해주세요</Text>
 
-      {/* ⭐ 이 영역이 빨간 박스 */}
-      <View style={styles.buttonArea}>
-        <Pressable
-          onPress={handleLike}
-          style={({ pressed }) => [
-            styles.button,
-            selected === "like" ? styles.likeBtnSelected : styles.likeBtn,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Text style={styles.buttonText}>좋아요</Text>
-        </Pressable>
+        <View style={styles.buttonArea}>
+          <Pressable
+            onPress={handleLike}
+            style={({ pressed }) => [
+              styles.button,
+              selected === "like" ? styles.likeBtnSelected : styles.likeBtn,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <Text style={styles.buttonText}>좋아요</Text>
+          </Pressable>
 
-        <Pressable
-          onPress={handleDislike}
-          style={({ pressed }) => [
-            styles.button,
-            selected === "dislike"
-              ? styles.dislikeBtnSelected
-              : styles.dislikeBtn,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Text style={styles.buttonText}>아쉬워요</Text>
-        </Pressable>
+          <Pressable
+            onPress={handleDislike}
+            style={({ pressed }) => [
+              styles.button,
+              selected === "dislike"
+                ? styles.dislikeBtnSelected
+                : styles.dislikeBtn,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <Text style={styles.buttonText}>아쉬워요</Text>
+          </Pressable>
 
-        <Text style={styles.hint}>평가는 다음 코스 추천에 반영돼요!</Text>
+          <Text style={styles.hint}>
+            평가는 다음 코스 추천에 반영돼요!
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -80,8 +84,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  // 전체를 위로 이동
+  contentWrapper: {
+    alignItems: "center",
+    width: "100%",
+    transform: [{ translateY: 0 }],
+  },
+
   graphicWrap: {
-    marginTop: 120,
     marginBottom: -20,
   },
 
@@ -98,12 +108,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* ⭐ 빨간 박스 전체 위치 */
   buttonArea: {
     width: "100%",
     alignItems: "center",
-    marginTop: 30,
-    transform: [{ translateY: -40 }],
+    marginTop: 20,
   },
 
   button: {

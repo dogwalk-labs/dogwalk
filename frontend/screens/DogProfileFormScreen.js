@@ -39,7 +39,9 @@ export default function DogProfileFormScreen({ onCompletePress }) {
       >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.content}>
-            <Text style={styles.title}>반려견 정보를{"\n"}입력해주세요!</Text>
+            <Text style={styles.title}>
+              🐾 반려견 정보를{"\n"}입력해주세요!
+            </Text>
 
             <View style={styles.inputWrap}>
               <Text style={styles.label}>이름</Text>
@@ -143,8 +145,12 @@ export default function DogProfileFormScreen({ onCompletePress }) {
                 });
               }}
             >
-              <Text style={styles.submitButtonText}>프로필 생성</Text>
+              <Text style={styles.submitButtonText}>프로필 생성 완료</Text>
             </Pressable>
+
+            <Text style={styles.guideText}>
+              💡 반려견 정보는 나중에 마이프로필에서 다시 수정할 수 있어요!
+            </Text>
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -157,15 +163,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
+
   safeArea: {
     flex: 1,
     backgroundColor: BG,
   },
+
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 90,
   },
+
   title: {
     fontSize: 28,
     fontWeight: "900",
@@ -174,9 +183,11 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     textAlign: "center",
   },
+
   inputWrap: {
     marginBottom: 16,
   },
+
   label: {
     fontSize: 14,
     fontWeight: "800",
@@ -184,6 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
+
   input: {
     height: 52,
     borderRadius: 16,
@@ -195,10 +207,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.08)",
   },
+
   genderRow: {
     flexDirection: "row",
     gap: 10,
   },
+
   genderButton: {
     flex: 1,
     height: 52,
@@ -209,18 +223,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.08)",
   },
+
   genderButtonActive: {
     backgroundColor: "#E9D6C1",
     borderColor: "#D3AE7B",
   },
+
   genderText: {
     fontSize: 16,
     fontWeight: "800",
     color: "#7A746A",
   },
+
   genderTextActive: {
     color: "#6F4B23",
   },
+
   submitButton: {
     marginTop: 18,
     height: 58,
@@ -229,16 +247,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   submitButtonDisabled: {
     opacity: 0.55,
   },
+
   buttonPressed: {
     transform: [{ scale: 0.97 }],
     opacity: 0.94,
   },
+
   submitButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "900",
+  },
+
+  guideText: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#A39A8D",
+    lineHeight: 18,
   },
 });
