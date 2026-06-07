@@ -58,7 +58,7 @@ export default function LoginScreen({
 
             <View style={styles.content}>
               <Image
-                source={require("../assets/loginPage_dog.png")}
+                source={require("../../assets/loginPage_dog.png")}
                 style={styles.icon}
                 resizeMode="contain"
               />

@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { API_BASE_URL } from "../config/config";
+import { API_BASE_URL } from "../../config/config";
 
 const BG = "#FFFFFF";
 const CARD_BG = "#F3EEE5";

@@ -93,7 +93,7 @@ export default function RegisterScreen({ onBack, onSignupPress, submitting }) {
             <View style={styles.content}>
               <View style={styles.hero}>
                 <Image
-                  source={require("../assets/registerPage_image.png")}
+                  source={require("../../assets/registerPage_image.png")}
                   style={styles.icon}
                   resizeMode="contain"
                 />

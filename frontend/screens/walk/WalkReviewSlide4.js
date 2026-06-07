@@ -22,7 +22,7 @@ export default function WalkReviewSlide4({ onGoHome }) {
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <View style={styles.graphicWrap}>
         <Image
-          source={require("../assets/endScreen_footprint.png")}
+          source={require("../../assets/endScreen_footprint.png")}
           style={styles.graphicImage}
           resizeMode="contain"
         />

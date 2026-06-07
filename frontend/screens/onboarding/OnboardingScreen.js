@@ -1,20 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, ScrollView, Dimensions, Text, Alert } from "react-native";
-import { API_BASE_URL } from "../config/config";
+import { API_BASE_URL } from "../../config/config";
 import {
   saveAuthSession,
   getCurrentUser,
-} from "../auth/authStorage";
+} from "../../auth/authStorage";
 import OnboardingSlide1 from "./OnboardingSlide1";
 import OnboardingSlide2 from "./OnboardingSlide2";
 import OnboardingSlide3 from "./OnboardingSlide3";
-import LoginScreen from "./LoginScreen";
-import RegisterScreen from "./RegisterScreen";
-import ForgotPasswordScreen from "./ForgotPasswordScreen";
-import ResetPasswordScreen from "./ResetPasswordScreen";
-import ProfileRequiredScreen from "./ProfileRequiredScreen";
-import UserProfileFormScreen from "./UserProfileFormScreen";
-import DogProfileFormScreen from "./DogProfileFormScreen";
+import LoginScreen from "../login/LoginScreen";
+import RegisterScreen from "../login/RegisterScreen";
+import ForgotPasswordScreen from "../login/ForgotPasswordScreen";
+import ResetPasswordScreen from "../login/ResetPasswordScreen";
+import ProfileRequiredScreen from '../profile/ProfileRequiredScreen';
+import UserProfileFormScreen from '../profile/UserProfileFormScreen';
+import DogProfileFormScreen from '../profile/DogProfileFormScreen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";

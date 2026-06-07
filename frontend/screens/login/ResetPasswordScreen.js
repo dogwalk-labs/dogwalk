@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { API_BASE_URL } from "../config/config";
+import { API_BASE_URL } from "../../config/config";
 
 const BG = "#FBF3DD";
 const BROWN = "#B99A73";

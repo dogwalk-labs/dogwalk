@@ -10,7 +10,7 @@ export default function ProfileRequiredScreen({ onCreateProfilePress }) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Image
-          source={require("../assets/onboardingPage_dog.png")}
+          source={require("../../assets/onboardingPage_dog.png")}
           style={styles.image}
           resizeMode="contain"
         />

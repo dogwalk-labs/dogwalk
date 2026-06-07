@@ -10,7 +10,7 @@ import {
   Image,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native"; // 추가
-import { API_BASE_URL } from "../config/config"; // 추가 (reviewStore 제거)
+import { API_BASE_URL } from "../../config/config"; // 추가 (reviewStore 제거)
 
 const BG = "#FFFFFF";
 const CARD_BG = "#FFF9ED";

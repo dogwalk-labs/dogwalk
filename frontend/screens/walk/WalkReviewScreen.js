@@ -11,8 +11,8 @@ import WalkReviewSlide1 from "./WalkReviewSlide1";
 import WalkReviewSlide2 from "./WalkReviewSlide2";
 import WalkReviewSlide3 from "./WalkReviewSlide3";
 import WalkReviewSlide4 from "./WalkReviewSlide4";
-import { API_BASE_URL } from "../config/config";
-import { getAccessToken } from "../auth/authStorage";
+import { API_BASE_URL } from "../../config/config";
+import { getAccessToken } from "../../auth/authStorage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BG = "#FBF3DD";

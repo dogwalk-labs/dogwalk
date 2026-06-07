@@ -18,7 +18,7 @@ export default function WalkReviewSlide1({
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <View style={styles.graphicWrap}>
         <Image
-          source={require("../assets/endScreen_bowl.png")}
+          source={require("../../assets/endScreen_bowl.png")}
           style={styles.graphicImage}
           resizeMode="contain"
         />

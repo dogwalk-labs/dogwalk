@@ -12,8 +12,8 @@ import {
   Keyboard,
   Alert,
 } from "react-native";
-import { API_BASE_URL } from "../config/config";
-import { getAccessToken } from "../auth/authStorage";
+import { API_BASE_URL } from "../../config/config";
+import { getAccessToken } from "../../auth/authStorage";
 
 const BG = "#FFFFFF";
 const BROWN = "#B08B5A";

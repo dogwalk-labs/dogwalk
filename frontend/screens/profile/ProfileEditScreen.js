@@ -13,9 +13,9 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { API_BASE_URL } from "../config/config";
-import { getCurrentUser } from "../auth/authStorage";
-import { resolveProfileImageUrl } from "../lib/uploadProfileImage";
+import { API_BASE_URL } from "../../config/config";
+import { getCurrentUser } from "../../auth/authStorage";
+import { resolveProfileImageUrl } from "../../lib/uploadProfileImage";
 
 const TAB_USER = "user";
 const TAB_DOG = "dog";

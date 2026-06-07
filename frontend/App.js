@@ -3,21 +3,21 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-import MapScreen from "./screens/MapScreen";
-import WalkPreferenceScreen from "./screens/WalkPreferenceScreen";
-import TimeSelectScreen from "./screens/TimeSelectScreen";
-import RouteSelectScreen from "./screens/RouteSelectScreen";
-import WalkMapScreen from "./screens/WalkMapScreen";
-import OnboardingScreen from "./screens/OnboardingScreen";
+import MapScreen from "./screens/walk/MapScreen";
+import WalkPreferenceScreen from "./screens/walk/WalkPreferenceScreen";
+import TimeSelectScreen from "./screens/walk/TimeSelectScreen";
+import RouteSelectScreen from "./screens/walk/RouteSelectScreen";
+import WalkMapScreen from "./screens/walk/WalkMapScreen";
+import OnboardingScreen from "./screens/onboarding/OnboardingScreen";
 
-import PlaceReviewScreen from "./screens/PlaceReviewScreen";
-import PlaceReviewScreen2 from "./screens/PlaceReviewScreen2";
+import PlaceReviewScreen from "./screens/review/PlaceReviewScreen";
+import PlaceReviewScreen2 from "./screens/review/PlaceReviewScreen2";
 
-import RankingScreen from "./screens/RankingScreen";
-import CommunityScreen from "./screens/CommunityScreen";
-import ProfileScreen from "./screens/ProfileScreen";
-import ProfileEditScreen from "./screens/ProfileEditScreen";
-import UserPublicProfileScreen from "./screens/UserPublicProfileScreen";
+import RankingScreen from "./screens/ranking/RankingScreen";
+import CommunityScreen from "./screens/chatBot/CommunityScreen";
+import ProfileScreen from "./screens/profile/ProfileScreen";
+import ProfileEditScreen from "./screens/profile/ProfileEditScreen";
+import UserPublicProfileScreen from "./screens/ranking/UserPublicProfileScreen";
 
 import BottomTabBar from "./components/BottomTabBar";
 

@@ -19,7 +19,7 @@ export default function OnboardingSlide2({ onNextPress }) {
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <View style={styles.heroBox}>
         <Image
-          source={require("../assets/onboardingPage_foot.png")}
+          source={require("../../assets/onboardingPage_foot.png")}
           style={styles.iconFoot}
           resizeMode="contain"
         />

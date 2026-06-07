@@ -33,7 +33,7 @@ export default function WalkReviewSlide2({ onLike, onDislike }) {
       <View style={styles.contentWrapper}>
         <View style={styles.graphicWrap}>
           <Image
-            source={require("../assets/endScreen_star.png")}
+            source={require("../../assets/endScreen_star.png")}
             style={styles.graphicImage}
             resizeMode="contain"
           />

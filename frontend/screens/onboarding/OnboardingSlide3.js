@@ -21,7 +21,7 @@ export default function OnboardingSlide3({ onLoginPress, onSignupPress }) {
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <View style={styles.hero}>
         <Image
-          source={require("../assets/onboardingPage_LoginRegister.png")}
+          source={require("../../assets/onboardingPage_LoginRegister.png")}
           style={styles.icon}
           resizeMode="contain"
         />

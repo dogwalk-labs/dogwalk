@@ -29,7 +29,7 @@ export default function EndWalkConfirmScreen({ onClose, onConfirm }) {
         <View style={styles.contentWrapper}>
           <View style={styles.graphic}>
             <Image
-              source={require("../assets/endScreen_dog.png")}
+              source={require("../../assets/endScreen_dog.png")}
               style={styles.graphicImage}
               resizeMode="contain"
             />

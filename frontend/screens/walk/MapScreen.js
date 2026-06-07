@@ -3,8 +3,8 @@ import { View, ActivityIndicator, StyleSheet, Text, Pressable } from "react-nati
 import { WebView } from "react-native-webview";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-import { POI_SERVICE_BASE_URL, API_BASE_URL } from "../config/config";
-import { getAccessToken } from "../auth/authStorage";
+import { POI_SERVICE_BASE_URL, API_BASE_URL } from "../../config/config";
+import { getAccessToken } from "../../auth/authStorage";
 
 const KAKAO_JS_KEY = "11d7dbc230380a0189daebce58d6ddb8";
 
