@@ -1,16 +1,77 @@
-\# dogwalk
+# 같이걷개!
+
+## 1. 팀원 소개
+
+| 이름 | 학번 | 역할 |
+|------|------|------|
+| 김현채 | 20201234 | Backend · 팀장 |
+| 김유담 | 32220981 | Backend | 
+| 박노아 | 32211599 | Frontend |
+| 이효원 | 32223748 | Frontend | 
+
+---
+
+## 2. 프로젝트 개요
+
+같이걷개!는 반려견 산책 경로를 추천하고, 산책 기록과 반려견 정보를 함께 관리할 수 있는 모바일 서비스입니다.
+
+### 주요 기능
+
+- 산책 경로 추천
+- 랭킹 기능
+- 사용자 프로필, 반려견 프로필 설정 
+- 반려견 관련 상담 AI 챗봇
 
 
 
-Dog walking route recommendation service.
+### 사용 기술
 
+#### - Frontend
+- React Native
+- Expo
+- JavaScript
+- React Navigation
+- Kakao Maps API
 
+#### - Backend
+- Docker
+- Node.js (Express)
+- FastAPI (python)
+- JWT 인증
 
-\## Structure
+#### - Database
+- Supabase
+- PostgreSQL + PostGIS
 
-\- frontend/ : Expo app, React Native
+#### - AI
+- Gemini 2.5 Flash Lite
 
-\- backend/  : Node.js recommendation server
+---
 
+## 3. 실행 환경 및 방법
 
+👉 [같이걷개! 실행 가이드](./frontend/README.md)
 
+---
+
+## 4. 포스터
+
+![같이걷개! 포스터](./docs/poster.png)
+
+---
+
+## 5. 시연 영상
+
+👉 [같이걷개! 시연 영상](https://www.youtube.com/watch?si=xo0iMZguorsXAbT9&v=30mEUgaWlh8&feature=youtu.be)
+
+---
+
+## 6. 결과 보고서
+
+👉 [결과 보고서](./docs/DogWalk_결과보고서.pdf)
+
+---
+
+## 7. 발표 PPT
+
+👉 [발표 PPT 다운로드](./docs/DogWalk_발표자료.pptx)
