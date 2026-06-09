@@ -30,7 +30,6 @@
 - React Native
 - Expo
 - JavaScript
-- React Navigation
 - Kakao Maps API
 
 #### - Backend
