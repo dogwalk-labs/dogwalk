@@ -73,4 +73,4 @@
 
 ## 7. 발표 자료
 
-👉 <a href="./docs/같이걷개!_발표자료.pdf" download="같이걷개_발표자료.pdf" target="_blank" rel="noopener noreferrer">발표 자료 다운로드</a>
+👉 <a href="./docs/같이걷개!_발표자료.pdf" download="같이걷개_발표자료.pdf" target="_blank" rel="noopener noreferrer">발표 자료 확인/a>
