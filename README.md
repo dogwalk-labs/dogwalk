@@ -50,7 +50,7 @@
 
 ## 3. 실행 환경 및 방법
 
-👉 [같이걷개! 실행 가이드](./frontend/README.md)
+👉 <a href="./frontend/README.md" target="_blank" rel="noopener noreferrer">같이걷개! 실행 가이드</a>
 
 ---
 
@@ -62,7 +62,7 @@
 
 ## 5. 시연 영상
 
-👉 [같이걷개! 시연 영상](https://www.youtube.com/watch?si=xo0iMZguorsXAbT9&v=30mEUgaWlh8&feature=youtu.be)
+👉 <a href="https://www.youtube.com/watch?si=xo0iMZguorsXAbT9&v=30mEUgaWlh8&feature=youtu.be" target="_blank" rel="noopener noreferrer">같이걷개! 시연 영상</a>
 
 ---
 
