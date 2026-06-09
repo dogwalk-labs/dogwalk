@@ -44,7 +44,7 @@ ipconfig
 
 ## 3. Docker 실행 (OSRM 추천 서버)
 ```powershell
-dockercompose up -d
+docker compose up -d
 ```
 Docker Desktop에서 컨테이너 3개(`dogwalk-db`, `dogwalk-osrm`, `dogwalk-api`)가 뜨면 성공.
 
