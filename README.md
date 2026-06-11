@@ -67,10 +67,10 @@
 
 ## 6. 결과 보고서
 
-👉 [결과 보고서](./docs/DogWalk_결과보고서.pdf)
+👉 [결과 보고서](./docs/dogwalk_presentation.pdf)
 
 ---
 
 ## 7. 발표 자료
 
-👉 <a href="./docs/같이걷개!_발표자료.pdf" download="같이걷개_발표자료.pdf" target="_blank" rel="noopener noreferrer">발표 자료 확인</a>
+👉 [발표자료 다운로드(pdf)](https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_presentation.pdf)
