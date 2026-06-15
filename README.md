@@ -67,10 +67,16 @@
 
 ## 6. 결과 보고서
 
-👉 [결과 보고서](./docs/dogwalk_presentation.pdf)
+👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_final_report.pdf" download target="_blank" rel="noopener noreferrer">최종 결과과 보고서 다운로드 (PDF)</a>
 
 ---
 
 ## 7. 발표 자료
 
-👉 [발표자료 다운로드(pdf)](https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_presentation.pdf)
+| 구분 | 다운로드 |
+|------|----------|
+| 중간 발표 자료 | 👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_mid_presentation.pdf" download target="_blank" rel="noopener noreferrer">중간 발표 다운로드 (PDF)</a> |
+| 기술 발표 자료 | 👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_tech_presentation.pdf" download target="_blank" rel="noopener noreferrer">기술 발표 다운로드 (PDF)</a> |
+| 최종 발표 자료 | 👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_final_presentation.pdf" download target="_blank" rel="noopener noreferrer">최종 발표 다운로드 (PDF)</a> |
+
+---
