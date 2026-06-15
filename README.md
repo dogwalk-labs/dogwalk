@@ -67,7 +67,7 @@
 
 ## 6. 결과 보고서
 
-👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_final_report.pdf" download target="_blank" rel="noopener noreferrer">최종 결과과 보고서 다운로드 (PDF)</a>
+👉 <a href="https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_final_report.pdf" download target="_blank" rel="noopener noreferrer">최종 결과 보고서 다운로드 (PDF)</a>
 
 ---
 
