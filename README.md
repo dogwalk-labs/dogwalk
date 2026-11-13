@@ -3,15 +3,11 @@
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:FFF8ED,100:E8D1A8&height=130&section=header" width="100%"/>
 
-<br>
-
 <h3>사용자 맞춤형 실시간 반려견 산책 경로 추천 서비스</h3>
 
 <h1>🐾 같이걷개! 🐾</h1>
 
 <p>"반려견 산책, 이제는 고민 없이!"</p>
-
-<br>
 
 </div>
 
@@ -27,13 +23,9 @@
 
 ## 1. 팀 및 팀원 소개
 
-<br>
-
 **🦴 팀명: Team 개발로 개발**
 
 **🏫 소속: 단국대학교 AI융합대학 소프트웨어학과**
-
-<br>
 
 <table>
   <thead>
@@ -72,15 +64,9 @@
   </tbody>
 </table>
 
-<br>
-
 ---
 
-<br>
-
 ## 2. 프로젝트 개요
-
-<br>
 
 <div align="center">
 
@@ -94,43 +80,29 @@
 
 </div>
 
-<br>
-
 ### 1) 주요 기능
-
-<br>
 
 **🗺️ 맞춤형 산책 경로 추천**
 
 - 사용자의 현재 위치, 희망 산책 시간(30·60·90분), 선호 키워드(하천, 차 없는 길 등)를 기반으로 최적의 산책 경로 3개 추천
 - 실시간 GPS를 활용한 산책 경로 안내 및 산책 종료 후 평가를 통한 개인화 추천
 
-<br>
-
 **🏆 이달의 산책왕 랭킹 기능**
 
 - 사용자별 산책 활동량을 기반으로 월간 랭킹 제공
 - 다른 사용자와 산책 기록을 비교하며 지속적인 산책 참여 동기 부여
-
-<br>
 
 **🐶 사용자 및 반려견 프로필 관리**
 
 - 사용자 정보와 반려견 프로필 등록 및 수정
 - 개인별 산책 기록과 활동 이력을 확인하고 관리할 수 있는 마이페이지 제공
 
-<br>
-
 **🤖 반려견 상담 AI 챗봇**
 
 - Google Gemini AI를 활용한 반려견 관련 질문 및 상담 서비스
 - 반려견 건강, 행동, 산책 등 다양한 주제에 대한 맞춤형 답변 제공
 
-<br>
-
 ### 2) 사용 기술 및 시스템 아키텍처
-
-<br>
 
 | 구분 | 기술 스택 |
 |:---:|---|
@@ -140,16 +112,12 @@
 | **Database** | Supabase (PostgreSQL 16 + PostGIS 3.4 / 공간 데이터 관리) |
 | **AI** | Google Gemini 2.5 Flash Lite |
 
-<br>
-
 #### 💻 Frontend
 
 ![React Native](https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Kakao Maps](https://img.shields.io/badge/Kakao_Maps-FFCD00?style=for-the-badge&logo=kakao&logoColor=black)
-
-<br>
 
 #### ⚙️ Backend
 
@@ -158,14 +126,10 @@
 ![Node.js](https://img.shields.io/badge/Node.js_20-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
 
-<br>
-
 #### 🛣️ Routing Engine
 
 ![OSRM](https://img.shields.io/badge/OSRM-8B6F47?style=for-the-badge)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-
-<br>
 
 #### 🗄️ Database
 
@@ -173,35 +137,21 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![PostGIS](https://img.shields.io/badge/PostGIS_3.4-589632?style=for-the-badge)
 
-<br>
-
 #### 🤖 AI
 
 ![Google Gemini](https://img.shields.io/badge/Gemini_2.5_Flash_Lite-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)
 
-<br>
-
 #### 🏗️ 시스템 아키텍처
-
-<br>
 
 <p align="center">
   <img src="./docs/datagram2.png" alt="같이걷개! 시스템 아키텍처" width="90%">
 </p>
 
-<br>
-
 ---
-
-<br>
 
 ## 3. 실행 환경 및 방법
 
-<br>
-
 👉 [같이걷개! 실행 가이드](https://github.com/dogwalk-labs/dogwalk/blob/main/frontend/README.md)
-
-<br>
 
 ### 📁 디렉터리 구조
 
@@ -280,39 +230,21 @@ dogwalk-main/
 └── README.md                          # 프로젝트 소개
 ```
 
-<br>
-
 ---
-
-<br>
 
 ## 4. 시연 영상
 
-<br>
-
 👉 [같이걷개! 시연 영상](https://www.youtube.com/watch?si=xo0iMZguorsXAbT9&v=30mEUgaWlh8&feature=youtu.be)
 
-<br>
-
 ---
-
-<br>
 
 ## 5. 결과 보고서
 
-<br>
-
 👉 [최종 결과 보고서 다운로드 (PDF)](https://github.com/dogwalk-labs/dogwalk/raw/main/docs/dogwalk_final_report.pdf)
-
-<br>
 
 ---
 
-<br>
-
 ## 6. 발표 자료
-
-<br>
 
 | 구분 | 다운로드 |
 |------|----------|
