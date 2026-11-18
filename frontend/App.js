@@ -1,3 +1,4 @@
+
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -9,6 +10,9 @@ import TimeSelectScreen from "./screens/TimeSelectScreen";
 import RouteSelectScreen from "./screens/RouteSelectScreen";
 import WalkMapScreen from "./screens/WalkMapScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
+
+// ✅ 새로 추가한 경유점 테스트 화면
+import RouteWaypointTestScreen from "./screens/RouteWaypointTestScreen";
 
 import PlaceReviewScreen from "./screens/PlaceReviewScreen";
 import PlaceReviewScreen2 from "./screens/PlaceReviewScreen2";
@@ -33,6 +37,12 @@ function WalkStack() {
       <Stack.Screen name="TimeSelect" component={TimeSelectScreen} />
       <Stack.Screen name="RouteSelect" component={RouteSelectScreen} />
       <Stack.Screen name="WalkMap" component={WalkMapScreen} />
+
+      {/* ✅ 경유점 경로 테스트 화면 추가 */}
+      <Stack.Screen
+        name="RouteWaypointTest"
+        component={RouteWaypointTestScreen}
+      />
 
       <Stack.Screen name="PlaceReview" component={PlaceReviewScreen} />
       <Stack.Screen name="PlaceReview2" component={PlaceReviewScreen2} />
@@ -69,7 +79,10 @@ export default function App() {
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
-        <RootStack.Screen name="UserProfile" component={UserPublicProfileScreen} />
+        <RootStack.Screen
+          name="UserProfile"
+          component={UserPublicProfileScreen}
+        />
       </RootStack.Navigator>
     </NavigationContainer>
   );

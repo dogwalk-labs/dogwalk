@@ -97,6 +97,7 @@ export default function OnboardingScreen({ navigation }) {
               email: data.email,
               nickname: data.nickname,
             });
+            console.log("내 로그인 사용자 ID:", data.id);
 
             const profileRes = await fetch(`${API_BASE_URL}/profiles/me/${data.id}`);
             const profileData = await profileRes.json();

@@ -723,19 +723,47 @@ export default function MapScreen({ navigation }) {
   [allPois, favoriteOverrides]
 );
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.topBarButton,
-            styles.shadowButton,
-            pressed && styles.buttonPressed,
+    <View style={styles.container}>      
+    <View style={styles.topBar}>
+      {/* 기존 산책 추천 버튼 */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.topBarButton,
+          styles.shadowButton,
+          pressed && styles.buttonPressed,
+        ]}
+        onPress={() => navigation.navigate("WalkPreference")}
+      >
+        <Text style={styles.topBarText}>
+          산책 갈 시간이다멍! 🐾
+        </Text>
+      </Pressable>
+
+      {/* 새로 추가하는 경유점 테스트 버튼 */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.topBarButton,
+          styles.shadowButton,
+          {
+            marginTop: 10,
+            backgroundColor: "#FFFFFF",
+            alignItems: "center",
+          },
+          pressed && styles.buttonPressed,
+        ]}
+        onPress={() => navigation.navigate("RouteWaypointTest")}
+      >
+        <Text
+          style={[
+            styles.topBarText,
+            { color: "#1685DF" },
           ]}
-          onPress={() => navigation.navigate("WalkPreference")}
         >
-          <Text style={styles.topBarText}>산책 갈 시간이다멍! 🐾</Text>
-        </Pressable>
-      </View>
+          🗺️ 나만의 경로 만들기
+        </Text>
+      </Pressable>
+    </View>
+
 
       <View style={styles.mapContainer}>
         <WebView

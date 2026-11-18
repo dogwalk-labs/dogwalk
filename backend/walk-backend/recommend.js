@@ -1,5 +1,8 @@
-// recommend.js (ESM - 3개 출력 보장 + 다양성 점수 버전)
+// recommend.js (ESM - 3개 출력 보장 + 24개 방향 후보 + 공원/하천 취향 점수 반영)
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const OSRM_BASE = process.env.OSRM_BASE_URL || "http://localhost:5000";
 const OSRM_PROFILE = process.env.OSRM_PROFILE || "foot";
@@ -9,6 +12,31 @@ const fetchFn = global.fetch;
 
 if (!fetchFn) {
   throw new Error("fetch is not available. Use Node 18+.");
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function loadJsonArray(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.warn(`JSON 로드 실패 또는 파일 없음: ${filePath}`);
+    return [];
+  }
+}
+
+const PARKS = loadJsonArray(path.join(__dirname, "data", "parks.json"));
+const RIVERS = loadJsonArray(path.join(__dirname, "data", "rivers.json"));
+
+function normalizeSelectedTags(selectedTags = []) {
+  if (!Array.isArray(selectedTags)) return [];
+
+  return selectedTags
+    .map((tag) => String(tag).trim())
+    .filter(Boolean);
 }
 
 function makeDeterministicRouteId(geometry) {
@@ -24,6 +52,89 @@ function makeWaypoint(start, meters, deg) {
     (111320 * Math.cos((start.lat * Math.PI) / 180));
 
   return { lat: start.lat + dLat, lng: start.lng + dLng };
+}
+
+function distanceM(a, b) {
+  const R = 6371000;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function minDistanceRouteToPoint(geometry, point) {
+  const coords = geometry?.coordinates ?? [];
+  if (!coords.length) return Infinity;
+
+  let min = Infinity;
+
+  for (const [lng, lat] of coords) {
+    const d = distanceM({ lat, lng }, point);
+    if (d < min) min = d;
+  }
+
+  return min;
+}
+
+function preferenceBonus(geometry, selectedTags = []) {
+  const tags = normalizeSelectedTags(selectedTags);
+
+  let bonus = 0;
+  const routeTags = [];
+
+  const wantsPark =
+    tags.includes("park") ||
+    tags.includes("parks") ||
+    tags.includes("공원");
+
+  const wantsRiver =
+    tags.includes("river") ||
+    tags.includes("rivers") ||
+    tags.includes("하천") ||
+    tags.includes("천");
+
+  if (wantsPark) {
+    const nearPark = PARKS.some(
+      (p) => Number.isFinite(Number(p.lat)) &&
+        Number.isFinite(Number(p.lng)) &&
+        minDistanceRouteToPoint(geometry, {
+          lat: Number(p.lat),
+          lng: Number(p.lng),
+        }) <= 150
+    );
+
+    if (nearPark) {
+      bonus += 700;
+      routeTags.push("공원");
+    }
+  }
+
+  if (wantsRiver) {
+    const nearRiver = RIVERS.some(
+      (r) => Number.isFinite(Number(r.lat)) &&
+        Number.isFinite(Number(r.lng)) &&
+        minDistanceRouteToPoint(geometry, {
+          lat: Number(r.lat),
+          lng: Number(r.lng),
+        }) <= 150
+    );
+
+    if (nearRiver) {
+      bonus += 700;
+      routeTags.push("하천");
+    }
+  }
+
+  return {
+    bonus,
+    tags: [...new Set(routeTags)],
+  };
 }
 
 function downsampleGeoJSON(geo, maxPoints = 500) {
@@ -174,10 +285,12 @@ function maxOverlapWithPicked(candidate, picked) {
 }
 
 const directionGroups = [
-  [300, 330, 270, 240],
-  [30, 60, 90, 120],
-  [150, 180, 210, 240],
-  [0, 45, 135, 225, 315],
+  [0, 15, 30, 45],
+  [60, 75, 90, 105],
+  [120, 135, 150, 165],
+  [180, 195, 210, 225],
+  [240, 255, 270, 285],
+  [300, 315, 330, 345],
 ];
 
 async function buildCandidate({
@@ -188,6 +301,7 @@ async function buildCandidate({
   loopRadiusM,
   deg,
   banned,
+  selectedTags = [],
 }) {
   const route = await fetchRoundTrip(start, deg, loopRadiusM);
 
@@ -196,7 +310,7 @@ async function buildCandidate({
   const paceSec = (distanceM / PACE_M_PER_MIN) * 60;
   const durationSec = osrmSec > 0 ? osrmSec : paceSec;
 
-  if (durationSec < targetSec * 0.35|| durationSec > targetSec * 2.3) {
+  if (durationSec < targetSec * 0.35 || durationSec > targetSec * 2.3) {
     return null;
   }
 
@@ -213,6 +327,12 @@ async function buildCandidate({
 
   if (traits.tags.includes("큰길 위주")) score += 300;
   if (traits.tags.includes("골목 많음")) score -= 100;
+
+  const pref = preferenceBonus(geometry, selectedTags);
+  score -= pref.bonus;
+
+  traits.tags.push(...pref.tags);
+  traits.tags = [...new Set(traits.tags)];
 
   return {
     deg,
@@ -231,11 +351,14 @@ async function recommend3({
   userId = "anon",
   count = 3,
   bannedRouteIds = [],
+  selectedTags = [],
 }) {
   const cRaw = Number(count);
   const c = Number.isFinite(cRaw)
     ? Math.max(1, Math.min(3, Math.floor(cRaw)))
     : 3;
+
+  const safeSelectedTags = normalizeSelectedTags(selectedTags);
 
   const banned = new Set(
     Array.isArray(bannedRouteIds)
@@ -261,6 +384,7 @@ async function recommend3({
           loopRadiusM,
           deg,
           banned,
+          selectedTags: safeSelectedTags,
         })
       )
     );
@@ -305,6 +429,7 @@ async function recommend3({
           loopRadiusM: loopRadiusM * 0.85,
           deg,
           banned,
+          selectedTags: safeSelectedTags,
         })
       )
     );

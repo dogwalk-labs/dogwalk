@@ -41,8 +41,15 @@ app.post("/recommend", async (req, res) => {
   console.log("RECOMMEND HIT", new Date().toISOString(), req.body);
 
   try {
-    const { start, minutes, userId, bannedRouteIds, count, tags } =
-      req.body ?? {};
+    const {
+      start,
+      minutes,
+      userId,
+      bannedRouteIds,
+      count,
+      tags,
+      selectedTags,
+    } = req.body ?? {};
 
     if (
       !start ||
@@ -56,6 +63,13 @@ app.post("/recommend", async (req, res) => {
       return res.status(400).json({ error: "minutes 필요" });
     }
 
+    // ✅ 프론트가 tags로 보내도 되고 selectedTags로 보내도 되게 처리
+    const preferenceTags = Array.isArray(selectedTags)
+      ? selectedTags
+      : Array.isArray(tags)
+      ? tags
+      : [];
+
     const routes = await recommend3({
       start: {
         lat: Math.round(Number(start.lat) * 10000) / 10000,
@@ -65,7 +79,7 @@ app.post("/recommend", async (req, res) => {
       userId: userId ?? "anon",
       count: count ?? 3,
       bannedRouteIds: Array.isArray(bannedRouteIds) ? bannedRouteIds : [],
-      tags: Array.isArray(tags) ? tags : [],
+      selectedTags: preferenceTags,
     });
 
     return res.json({
