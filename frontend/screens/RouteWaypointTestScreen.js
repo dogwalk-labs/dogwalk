@@ -591,7 +591,7 @@ export default function RouteWaypointTestScreen({
         </Pressable>
 
         <Text style={styles.title}>
-          🗺️ 나만의 산책 경로 테스트
+          🗺️ 사용자에게 추천할 경로 테스트
         </Text>
 
         <Text style={styles.subtitle}>
